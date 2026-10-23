@@ -1,0 +1,354 @@
+{
+  "title": "EV Charge Manager",
+  "config": {
+    "step": {
+      "menu": {
+        "title": "EV Charge Manager \u2014 read-only preview",
+        "menu_options": {
+          "modules": "Modules",
+          "vehicle": "Add logical vehicle",
+          "provider": "Attach provider",
+          "site": "Add site",
+          "charger": "Add charger",
+          "remove": "Remove item",
+          "finish": "Save",
+          "edit": "Edit item or provider fields",
+          "manage_provider": "Manage provider priority or device"
+        }
+      },
+      "modules": {
+        "title": "Modules and safety",
+        "description": "Independent read-only modules. Snapshot skew compares HA report times, not upstream freshness. Budget counts simulated requests only.",
+        "data": {
+          "brain_enabled": "Enable Charger Brain",
+          "optimizer_enabled": "Enable Charge Optimizer",
+          "stale_seconds": "Maximum source age (seconds)",
+          "command_budget": "Simulation request budget",
+          "snapshot_skew_seconds": "Maximum forecast field report-time difference (seconds)"
+        }
+      },
+      "vehicle": {
+        "title": "Logical vehicle",
+        "description": "Add one record per physical vehicle, then attach its provider devices.",
+        "data": {
+          "name": "Name",
+          "capacity_kwh": "Usable battery capacity (kWh)",
+          "max_kw": "Maximum AC charging power (kW)",
+          "efficiency": "AC to battery efficiency"
+        }
+      },
+      "provider": {
+        "title": "Provider device",
+        "description": "Attach Custom first and Fleet as fallback, or any supported HA device. Confirm discovered fields in the next step.",
+        "data": {
+          "vehicle": "Logical vehicle",
+          "device": "HA device",
+          "id": "Provider identifier",
+          "primary": "Prefer this provider"
+        }
+      },
+      "fields": {
+        "title": "Review discovered fields",
+        "description": "Only unambiguous semantic registry fields are suggested. Select missing fields explicitly. Each field falls back independently.",
+        "data": {
+          "soc": "Soc",
+          "target": "Target",
+          "cable": "Cable",
+          "tracker": "Tracker",
+          "charging": "Charging",
+          "power": "Power",
+          "odometer": "Odometer"
+        }
+      },
+      "site": {
+        "title": "Site and all-in prices",
+        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "data": {
+          "id": "Id",
+          "name": "Name",
+          "zone_state": "Zone State",
+          "timezone": "Timezone",
+          "grid_kw": "Grid Kw",
+          "nordpool_entry": "Nordpool Entry",
+          "price_entity": "Price Entity",
+          "price_attribute": "Price Attribute",
+          "price_multiplier": "Price Multiplier",
+          "area": "Area",
+          "price_basis": "Price Basis",
+          "grid": "Grid",
+          "tax": "Tax",
+          "supplier": "Supplier",
+          "vat": "Vat",
+          "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
+          "guest_power_entity": "Optional measured guest demand (W or kW)"
+        }
+      },
+      "charger": {
+        "title": "Charger observation",
+        "description": "Select the physical status sensor. Power alone cannot establish physical disconnect.",
+        "data": {
+          "id": "Id",
+          "name": "Name",
+          "device": "Device",
+          "status": "Status",
+          "zone_state": "Zone State"
+        }
+      },
+      "remove": {
+        "title": "Remove configuration",
+        "description": "Removing a vehicle also removes its provider links.",
+        "data": {
+          "item": "Item"
+        }
+      },
+      "edit": {
+        "title": "Edit configuration",
+        "description": "Vehicle identity is preserved. IDs are stable; editing provider fields retains device association.",
+        "data": {
+          "item": "Item"
+        }
+      },
+      "manage_provider": {
+        "title": "Manage provider",
+        "description": "Changes affect this logical vehicle only; its identity remains unchanged.",
+        "data": {
+          "provider": "Provider"
+        }
+      },
+      "provider_action": {
+        "title": "Provider action",
+        "description": "Primary/up/down change read priority. Removal fails closed for missing fields. Replacement requires a new device and reviewed field mappings.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "provider_device": {
+        "title": "Replace provider device",
+        "description": "Select the replacement device, then review its fields. Existing vehicle identity and provider position are retained.",
+        "data": {
+          "device": "Replacement device"
+        }
+      }
+    },
+    "error": {
+      "invalid_mapping": "Invalid mapping, duplicate identity, timezone or price configuration.",
+      "duplicate_device": "This device is already linked to a logical vehicle."
+    },
+    "abort": {
+      "already_configured": "Already configured. Use Configure to change options.",
+      "no_vehicles": "Add a logical vehicle first.",
+      "no_providers": "Attach a provider first."
+    }
+  },
+  "options": {
+    "step": {
+      "menu": {
+        "title": "EV Charge Manager \u2014 read-only preview",
+        "menu_options": {
+          "modules": "Modules",
+          "vehicle": "Add logical vehicle",
+          "provider": "Attach provider",
+          "site": "Add site",
+          "charger": "Add charger",
+          "remove": "Remove item",
+          "finish": "Save",
+          "edit": "Edit item or provider fields",
+          "manage_provider": "Manage provider priority or device"
+        }
+      },
+      "modules": {
+        "title": "Modules and safety",
+        "description": "Independent read-only modules. Snapshot skew compares HA report times, not upstream freshness. Budget counts simulated requests only.",
+        "data": {
+          "brain_enabled": "Enable Charger Brain",
+          "optimizer_enabled": "Enable Charge Optimizer",
+          "stale_seconds": "Maximum source age (seconds)",
+          "command_budget": "Simulation request budget",
+          "snapshot_skew_seconds": "Maximum forecast field report-time difference (seconds)"
+        }
+      },
+      "vehicle": {
+        "title": "Logical vehicle",
+        "description": "Add one record per physical vehicle, then attach its provider devices.",
+        "data": {
+          "name": "Name",
+          "capacity_kwh": "Usable battery capacity (kWh)",
+          "max_kw": "Maximum AC charging power (kW)",
+          "efficiency": "AC to battery efficiency"
+        }
+      },
+      "provider": {
+        "title": "Provider device",
+        "description": "Attach Custom first and Fleet as fallback, or any supported HA device. Confirm discovered fields in the next step.",
+        "data": {
+          "vehicle": "Logical vehicle",
+          "device": "HA device",
+          "id": "Provider identifier",
+          "primary": "Prefer this provider"
+        }
+      },
+      "fields": {
+        "title": "Review discovered fields",
+        "description": "Only unambiguous semantic registry fields are suggested. Select missing fields explicitly. Each field falls back independently.",
+        "data": {
+          "soc": "Soc",
+          "target": "Target",
+          "cable": "Cable",
+          "tracker": "Tracker",
+          "charging": "Charging",
+          "power": "Power",
+          "odometer": "Odometer"
+        }
+      },
+      "site": {
+        "title": "Site and all-in prices",
+        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "data": {
+          "id": "Id",
+          "name": "Name",
+          "zone_state": "Zone State",
+          "timezone": "Timezone",
+          "grid_kw": "Grid Kw",
+          "nordpool_entry": "Nordpool Entry",
+          "price_entity": "Price Entity",
+          "price_attribute": "Price Attribute",
+          "price_multiplier": "Price Multiplier",
+          "area": "Area",
+          "price_basis": "Price Basis",
+          "grid": "Grid",
+          "tax": "Tax",
+          "supplier": "Supplier",
+          "vat": "Vat",
+          "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
+          "guest_power_entity": "Optional measured guest demand (W or kW)"
+        }
+      },
+      "charger": {
+        "title": "Charger observation",
+        "description": "Select the physical status sensor. Power alone cannot establish physical disconnect.",
+        "data": {
+          "id": "Id",
+          "name": "Name",
+          "device": "Device",
+          "status": "Status",
+          "zone_state": "Zone State"
+        }
+      },
+      "remove": {
+        "title": "Remove configuration",
+        "description": "Removing a vehicle also removes its provider links.",
+        "data": {
+          "item": "Item"
+        }
+      },
+      "edit": {
+        "title": "Edit configuration",
+        "description": "Vehicle identity is preserved. IDs are stable; editing provider fields retains device association.",
+        "data": {
+          "item": "Item"
+        }
+      },
+      "manage_provider": {
+        "title": "Manage provider",
+        "description": "Changes affect this logical vehicle only; its identity remains unchanged.",
+        "data": {
+          "provider": "Provider"
+        }
+      },
+      "provider_action": {
+        "title": "Provider action",
+        "description": "Primary/up/down change read priority. Removal fails closed for missing fields. Replacement requires a new device and reviewed field mappings.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "provider_device": {
+        "title": "Replace provider device",
+        "description": "Select the replacement device, then review its fields. Existing vehicle identity and provider position are retained.",
+        "data": {
+          "device": "Replacement device"
+        }
+      }
+    },
+    "error": {
+      "invalid_mapping": "Invalid mapping, duplicate identity, timezone or price configuration.",
+      "duplicate_device": "This device is already linked to a logical vehicle."
+    }
+  },
+  "services": {
+    "simulate_guest_authorization": {
+      "name": "Simulate guest authorization",
+      "description": "Authorizes only this integration\u2019s simulated guest session. Sends no physical command.",
+      "fields": {
+        "charger": {
+          "name": "Charger",
+          "description": "Current observed charger"
+        },
+        "session_id": {
+          "name": "Session Id",
+          "description": "Current observed session id"
+        }
+      }
+    },
+    "simulate_probe": {
+      "name": "Simulate ambiguity probe",
+      "description": "Evaluates supplied synthetic samples only. Does not command or observe real hardware.",
+      "fields": {
+        "charger": {
+          "name": "Charger",
+          "description": "Simulation input: charger"
+        },
+        "candidates": {
+          "name": "Candidates",
+          "description": "Simulation input: candidates"
+        },
+        "samples": {
+          "name": "Samples",
+          "description": "Simulation input: samples"
+        },
+        "commissioned_vehicles": {
+          "name": "Commissioned Vehicles",
+          "description": "Simulation input: commissioned vehicles"
+        },
+        "commissioned_chargers": {
+          "name": "Commissioned Chargers",
+          "description": "Simulation input: commissioned chargers"
+        },
+        "guest": {
+          "name": "Guest",
+          "description": "Simulation input: guest"
+        }
+      }
+    },
+    "simulate_command": {
+      "name": "Simulate command",
+      "description": "Validates and records an intent with no hardware transport. Budget is an estimate, not Fleet usage.",
+      "fields": {
+        "charger": {
+          "name": "Charger",
+          "description": "Simulation input: charger"
+        },
+        "session_id": {
+          "name": "Session Id",
+          "description": "Simulation input: session id"
+        },
+        "key": {
+          "name": "Key",
+          "description": "Simulation input: key"
+        },
+        "owner": {
+          "name": "Owner",
+          "description": "Simulation input: owner"
+        },
+        "action": {
+          "name": "Action",
+          "description": "Simulation input: action"
+        },
+        "value": {
+          "name": "Value",
+          "description": "Simulation input: value"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,64 @@
+simulate_guest_authorization:
+  fields:
+    charger:
+      required: true
+      selector:
+        text: null
+    session_id:
+      required: true
+      selector:
+        text: null
+simulate_probe:
+  fields:
+    charger:
+      required: true
+      selector:
+        text: null
+    candidates:
+      required: true
+      selector:
+        object: null
+    samples:
+      required: true
+      selector:
+        object: null
+    commissioned_vehicles:
+      required: true
+      selector:
+        object: null
+    commissioned_chargers:
+      required: true
+      selector:
+        object: null
+    guest:
+      selector:
+        boolean: null
+simulate_command:
+  fields:
+    charger:
+      required: true
+      selector:
+        text: {}
+    session_id:
+      required: true
+      selector:
+        text: {}
+    key:
+      required: true
+      selector:
+        text: {}
+    owner:
+      required: true
+      selector:
+        text: {}
+    action:
+      required: true
+      selector:
+        text: {}
+    value:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
