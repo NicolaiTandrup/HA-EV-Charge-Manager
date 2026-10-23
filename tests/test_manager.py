@@ -534,8 +534,14 @@ async def test_shared_provider_ui_attaches_fields_and_rejects_foreign_device(has
     assert entry.options["vehicles"][0]["id"] == "car"
 
 
-async def test_official_price_source_runs_through_unified_coordinator(hass):
-    now = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
+async def test_official_price_source_runs_through_unified_coordinator(hass, freezer):
+    freezer.move_to("2026-10-23T12:00:00+00:00")
+    now = dt_util.utcnow()
+    from zoneinfo import ZoneInfo
+
+    from custom_components.ev_charge_manager.price_engine import day_bounds
+
+    start, end = day_bounds(now.astimezone(ZoneInfo("Europe/Copenhagen")).date())
     config = model(hass)
     site = config["sites"][0]
     site.pop("price_entity")
@@ -550,8 +556,8 @@ async def test_official_price_source_runs_through_unified_coordinator(hass):
         return {
             "DK2": [
                 {
-                    "start": now.isoformat(),
-                    "end": (now + timedelta(hours=24)).isoformat(),
+                    "start": start.isoformat(),
+                    "end": end.isoformat(),
                     "price": 1000,
                 }
             ]

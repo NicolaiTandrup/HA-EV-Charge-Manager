@@ -17,6 +17,7 @@ from .command import CommandManager
 from .const import DOMAIN
 from .optimizer import OptimizerCoordinator
 from .price_engine import PriceEngine
+from .price_schedule import PriceSchedule
 from .price_update import PriceUpdater
 from .sessions import Sessions
 from .vehicle import VehicleRegistry
@@ -104,6 +105,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.sessions = Sessions()
         self.price_engine = PriceEngine(hass, entry.entry_id)
         self.price_updater = PriceUpdater(hass, self.price_engine)
+        self.price_schedule = PriceSchedule(self)
         vehicles = [
             {
                 "id": v["id"],
@@ -138,7 +140,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
     async def async_load(self):
         self.persist_sources()
         await self.price_engine.async_load(self.sites)
-        await self.async_refresh_prices()
+        await self.price_schedule.startup()
         self.sessions = Sessions(await self.store.async_load())
         for site in self.sites.values():
             await site.async_load()
@@ -170,6 +172,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     @callback
     def async_listen(self):
+        self.price_schedule.listen()
         self.entry.async_on_unload(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._changed))
         self.entry.async_on_unload(
             self.hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, self._registry_changed)

@@ -39,7 +39,18 @@ Native current/next/status price sensors read durable data. Configured entity so
 must provide quarter-aligned timestamps. Existing partial price feeds stay partial;
 no invented zero slots. External all-in mode does not reverse-engineer components.
 
-Next: #10 scheduled publication refresh/startup checks using persisted completeness.
+Price Engine `d1c66b7` is draft PR #11, stacked on PR #6. Its remote push/PR
+checks all passed (tests, hassfest, HACS).
+
+Current checkpoint `Schedule verified day-ahead price refresh and recovery`:
+**114 tests passed, no skips**, Ruff passed; official local hassfest passed.
+All five publication times are covered, plus native timer cancellation and atomic
+rejection of partial corrected day publications. Scheduled retries inspect durable
+completeness and verification state; 00:01 always checks sources. Startup verifies
+current and next day. Operational metadata uses a separate HA Store; unchanged
+checks do not rewrite price tables. Check remote CI after pushing this checkpoint.
+
+Next: #7 verified Radius C adapter and #8 dated components.
 Then #7: live API now VERIFIED Radius owner GLN 5790000705689, D03 product DT_C_01,
 Note Nettarif C, PT1H, VATClass D02. Nine actual product rows returned (2026 seasonal
 rows present). Verify documented units/VAT/date semantics before shipping adapter.

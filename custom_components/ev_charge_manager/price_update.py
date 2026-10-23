@@ -7,6 +7,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
 from .adapters import parse_prices
+from .price_engine import day_bounds
 from .prices import OfficialPrices
 
 
@@ -78,13 +79,30 @@ class PriceUpdater:
                     source["verified_at"] = min(times).isoformat() if times else now.isoformat()
                 else:
                     source["verified_at"] = state.last_reported.isoformat()
+                if dates and site.get("nordpool_entry"):
+                    for day in dates:
+                        start, end = day_bounds(day, site["timezone"])
+                        selected = [s for s in slots if start <= s.start and s.end <= end]
+                        complete = (
+                            bool(selected)
+                            and selected[0].start == start
+                            and selected[-1].end == end
+                            and all(a.end == b.start for a, b in zip(selected, selected[1:]))
+                        )
+                        if not complete:
+                            report.update(
+                                status="INCOMPLETE",
+                                reason="Requested day source series is incomplete",
+                                changed=False,
+                            )
+                            return False
                 changed = await self.engine.async_update(key, slots, tariff, source, now)
                 day = now.astimezone(ZoneInfo(site["timezone"])).date()
                 report.update(
                     status="READY"
                     if self.engine.complete_day(key, day, site["timezone"])
                     else "INCOMPLETE",
-                    last_success=now.isoformat(),
+                    last_success=source["verified_at"],
                     reason=None,
                     changed=changed,
                 )
