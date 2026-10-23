@@ -163,3 +163,37 @@ async def test_dated_dso_composition_through_native_integration(hass, freezer):
         assert published.attributes["current_dso_tariff_ex_vat"] == pytest.approx(0.318524)
         assert published.attributes["next_dso_change_at"] == "2026-10-23T15:00:00+00:00"
         assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_midnight_cache_does_not_skip_new_morning_publication(hass):
+    from unittest.mock import patch
+
+    source = TariffSource(hass, "publication")
+    # 00:01 Copenhagen on Oct 23 belongs to the previous publication bucket.
+    source.cache[RADIUS_GLN + ":" + RADIUS_CODE] = {
+        "records": DATA,
+        "fetched_at": "2026-10-22T22:01:00+00:00",
+    }
+
+    class Response:
+        def raise_for_status(self):
+            pass
+
+        async def json(self):
+            return {"records": DATA}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+    with patch(
+        "custom_components.ev_charge_manager.tariff_source.async_get_clientsession"
+    ) as session:
+        session.return_value.get.return_value = Response()
+        now = datetime(2026, 10, 23, 11, 5, tzinfo=UTC)
+        args = ({"dso_mode": "radius_c"}, *day_bounds(date(2026, 10, 24)), now)
+        await source.get(*args)
+        await source.get(*args)
+        assert session.return_value.get.call_count == 1

@@ -66,3 +66,8 @@ Live research contacted only public Datahub/Radius documentation and tariff asse
 not household HA or vehicle/charger services. ADR 003 records units, identity, VAT,
 effective-date evidence and fixtures. Real household pricing parity remains unrun
 pending the owner's contract and read-only broker comparison inputs.
+
+Publication-cache follow-up: **138 passed, zero skipped, 91% statement coverage**;
+Ruff/format and official local hassfest passed. The 09:00 Copenhagen publication
+bucket prevents midnight refresh from suppressing a subsequent source verification.
+`afe2e88` passed all push/PR tests, hassfest and HACS; verify the follow-up head too.

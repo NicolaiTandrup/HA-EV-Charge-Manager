@@ -37,7 +37,10 @@ published boundary is unavailable, never guessed from seasons.
 Use the documented structured API, not the embedded app's implementation-specific
 feed. The metadata recommends one request per GLN/product per day and says the
 source is generally updated before 09:00. A shared durable cache is keyed by exact
-GLN/product; successful refresh is at most once per local day, failed attempts
+GLN/product; successful refresh is at most once per publication-day bucket (09:00 local
+boundary), with bounded extra retries when required effective coverage is missing.
+A midnight check therefore does not skip the later verification of newly updated
+morning data. Failed attempts
 back off at least an hour. Outages may use last verified effective schedules with
 an explicit stale warning, up to the configured maximum age (default seven days).
 If no usable verified schedule exists, an explicitly configured ex-VAT manual

@@ -109,9 +109,23 @@ class TariffSource:
             attempted = (
                 datetime.fromisoformat(cache["attempted_at"]) if cache.get("attempted_at") else None
             )
-            stale = not fetched or fetched.astimezone(ZONE).date() != now.astimezone(ZONE).date()
+
+            # Dataset updates before 09:00 local: a midnight check must not
+            # consume the next afternoon's verification of the new publication.
+            def bucket(stamp):
+                return (stamp.astimezone(ZONE) - timedelta(hours=9)).date()
+
+            stale = not fetched or bucket(fetched) != bucket(now)
+            coverage_missing = False
+            if fetched:
+                try:
+                    normalize_tariffs(cache.get("records", []), gln, code, start, end)
+                except ValueError, TypeError, KeyError:
+                    coverage_missing = True
             warning = None
-            if stale and (attempted is None or (now - attempted).total_seconds() >= 3600):
+            if (stale or coverage_missing) and (
+                attempted is None or (now - attempted).total_seconds() >= 3600
+            ):
                 cache["attempted_at"] = now.isoformat()
                 try:
                     async with async_get_clientsession(self.hass).get(

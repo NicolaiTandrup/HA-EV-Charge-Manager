@@ -12,12 +12,15 @@ Updated 2026-10-23. Canonical continuation file; read AGENTS.md first.
   Price Engine (#9) and scheduled refresh (#10). Remote push/PR tests, hassfest and
   HACS all passed at `d1c66b7` and `5c32dc9`.
 - Active: `feat/verified-danish-pricing`, based on PR #11. Initial source/component
-  checkpoint `b9ce79a` passed remote push tests/hassfest/HACS. Latest checkpoint
-  subject `Harden pricing lifecycle, diagnostics and regular planning cadence`
-  passes local **137 tests, zero skips**, Ruff/format, official hassfest with zero
-  invalid integrations; coverage **91%**. Check latest head CI after push.
-- Open a source/component draft PR from this active branch to
-  `feat/persistent-price-engine` if it does not already exist. Do not merge the stack.
+  checkpoint `b9ce79a` passed remote push tests/hassfest/HACS. Hardening checkpoint `afe2e88` passed local **137 tests, zero skips**, Ruff/format,
+  official hassfest and all remote push/PR tests, hassfest and HACS.
+- Current checkpoint `Align tariff cache with morning publication verification`:
+  **138 passed, zero skips; 91% coverage**, Ruff/format and official local hassfest
+  passed. It prevents midnight cache reads consuming the afternoon verification
+  of morning source updates. Check its exact remote CI head after pushing.
+- Source/component draft PR #12 is open from the active branch to
+  `feat/persistent-price-engine`. Stack: #5 → #6 → #11 → #12. All remain drafts;
+  do not merge the stack.
 
 ## Completed (do not repeat)
 
@@ -69,7 +72,7 @@ running HA or Node-RED. Keep #7/#8 open until contract/source parity is verified
 
 ## Remaining priorities
 
-1. Check latest active-branch CI; update/link the source draft PR and report results.
+1. Confirm latest publication-cache checkpoint CI, then resolve owner input below.
 2. Resolve owner EWII terms/read-only comparison fixtures; no rate speculation.
 3. Extend authoritative dated national rates only when published/verified. Current
    adapter is a bounded policy schedule, not a live legislative discovery service.
