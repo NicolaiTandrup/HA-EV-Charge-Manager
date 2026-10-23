@@ -1,0 +1,468 @@
+[
+  {
+    "id": "0b64ce72c667f20b",
+    "type": "tab",
+    "label": "EV Charger Brain v1.0",
+    "disabled": false,
+    "info": "\n# EV Charger Brain - v1.0 importflow\n\n**Version:** v1.0 draft / log-only first\n**Formĺl:** Dynamisk styring af Easee-ladere baseret pĺ laderstatus, bilernes charge-cable sensor, zone og manual override.\n\n## Vigtigste regler\n\n1. Laderstatus er autoritet for sessionens start/stop.\n2. Bilens charge-cable sensor er primćrt match-signal.\n3. Bilen skal vćre i samme zone som laderen for at vćre kandidat.\n4. GPS `unknown`, `unavailable` eller `not_home` mĺ ikke slukke en aktiv session.\n5. `Car disconnected` slukker laderen og rydder sessionen.\n6. Manual override er pr. lader og gćlder indtil fysisk disconnect.\n7. Default mapping bruges kun som tiebreaker mellem valide kandidater.\n8. Flowet starter i `Log only`, hvis `input_select.ev_charger_brain_mode` ikke findes eller ikke kan lćses.\n\n## Driftstilstande\n\n- `Disabled`: opdaterer intern state, men udfřrer ikke handlinger.\n- `Log only`: beregner og logger, men udfřrer ikke service calls.\n- `Production`: logger og udfřrer service calls.\n\n## Krćvede Home Assistant helpers\n\n```yaml\ninput_select:\n  ev_charger_brain_mode:\n    name: EV Charger Brain Mode\n    options:\n      - Disabled\n      - Log only\n      - Production\n    initial: Log only\n```\n\nManual override helpers, hvis du vil bruge override-knapper:\n\n```yaml\ninput_boolean:\n  garage_manual_until_disconnect:\n    name: Garage manual until disconnect\n  hegn_manual_until_disconnect:\n    name: Hegn manual until disconnect\n```\n\n## Vigtige TODOs fřr Production\n\n- v1.0 bruger Tesla Custom Integration som primćr statuskilde og Tesla Fleet som fallback.\n- Verificer at `sensor.garage_status` og `sensor.hegn_status` bruger statusvćrdierne fra kravspec'en.\n- Lad flowet křre i `Log only`, fřr de gamle on/off-grene i `Biler` disables.\n\n\n## v1.0 fix\n- Service call nodes har nu action-felt sat eksplicit: switch.turn_on, switch.turn_off og input_boolean.turn_off.\n- Intern flow context er flyttet til ev_brain_v10_* for ren state.\n"
+  },
+  {
+    "id": "291b43ad4cce1bd3",
+    "type": "comment",
+    "z": "0b64ce72c667f20b",
+    "name": "EV Charger Brain v1.0 - starter i Log only",
+    "info": "\n# EV Charger Brain - v1.0 importflow\n\n**Version:** v1.0 draft / log-only first\n**Formĺl:** Dynamisk styring af Easee-ladere baseret pĺ laderstatus, bilernes charge-cable sensor, zone og manual override.\n\n## Vigtigste regler\n\n1. Laderstatus er autoritet for sessionens start/stop.\n2. Bilens charge-cable sensor er primćrt match-signal.\n3. Bilen skal vćre i samme zone som laderen for at vćre kandidat.\n4. GPS `unknown`, `unavailable` eller `not_home` mĺ ikke slukke en aktiv session.\n5. `Car disconnected` slukker laderen og rydder sessionen.\n6. Manual override er pr. lader og gćlder indtil fysisk disconnect.\n7. Default mapping bruges kun som tiebreaker mellem valide kandidater.\n8. Flowet starter i `Log only`, hvis `input_select.ev_charger_brain_mode` ikke findes eller ikke kan lćses.\n\n## Driftstilstande\n\n- `Disabled`: opdaterer intern state, men udfřrer ikke handlinger.\n- `Log only`: beregner og logger, men udfřrer ikke service calls.\n- `Production`: logger og udfřrer service calls.\n\n## Krćvede Home Assistant helpers\n\n```yaml\ninput_select:\n  ev_charger_brain_mode:\n    name: EV Charger Brain Mode\n    options:\n      - Disabled\n      - Log only\n      - Production\n    initial: Log only\n```\n\nManual override helpers, hvis du vil bruge override-knapper:\n\n```yaml\ninput_boolean:\n  garage_manual_until_disconnect:\n    name: Garage manual until disconnect\n  hegn_manual_until_disconnect:\n    name: Hegn manual until disconnect\n```\n\n## Vigtige TODOs fřr Production\n\n- Verificer `binary_sensor.ellingo_charge_cable`.\n- Verificer at `sensor.garage_status` og `sensor.hegn_status` bruger statusvćrdierne fra kravspec'en.\n- Lad flowet křre i `Log only`, fřr de gamle on/off-grene i `Biler` disables.\n\n\n## v1.0 fix\nService call-noderne har eksplicit action-felt. Det retter fejlen hvor flowet kunne logge switch.turn_off uden at HA faktisk udfřrte kaldet.",
+    "x": 300,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "31d9e7c1561c102a",
+    "type": "comment",
+    "z": "0b64ce72c667f20b",
+    "name": "Versionering",
+    "info": "Versionering\nv0.1 - Brainstorm: fleksibel styring af ladere i stedet for fast bil-til-lader kobling.\nv0.2 - Lader som autoritet: GPS mĺ ikke slukke en aktiv ladesession.\nv0.3 - Zoner og konfiguration: nye ladere tilfřjes via config.\nv0.4 - Replug og override: replug genaktiverer, override gćlder indtil disconnect.\nv0.5 - Logging og tiebreaker: CSV-log og default mapping.\nv0.6 - Charge-cable som primćrt signal.\nv0.7 - Importerbart Node-RED flow med Log only / Production gate, polling, watchdog, CSV-log og dynamiske service calls.\nv0.8 - Tesla Custom Integration som primćr hurtig statuskilde + Tesla Fleet som fallback/kommando-kilde.\nv0.9 - Normaliserer Easee statusser med underscore, f.eks. ready_to_charge og awaiting_start.\nv1.0 - Fixer service call nodes sĺ action-feltet er sat eksplicit. Ellers blev turn_off logget, men ikke udfřrt korrekt.",
+    "x": 150,
+    "y": 120,
+    "wires": []
+  },
+  {
+    "id": "09ac623c2327133e",
+    "type": "comment",
+    "z": "0b64ce72c667f20b",
+    "name": "Tesla Custom primary + Fleet fallback",
+    "info": "v1.0 bruger Tesla Custom Integration som primćr datakilde for hurtigere status:\n\nBlue Flux:\n- tracker: device_tracker.location_tracker\n- charge cable: binary_sensor.charger\n- fallback Fleet: device_tracker.blue_flux_location / binary_sensor.blue_flux_charge_cable\n\nElLingo:\n- tracker: device_tracker.ellingo_location_tracker_2\n- charge cable: binary_sensor.ellingo_charger\n- fallback Fleet: device_tracker.ellingo_location / binary_sensor.ellingo_charge_cable\n\nKommandoer til bilerne, hvis de senere bruges, břr ske via Tesla Fleet switch.*_charge.",
+    "x": 330,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "6fef9afc76727980",
+    "type": "inject",
+    "z": "0b64ce72c667f20b",
+    "name": "Poll hvert 15 sek + watchdog",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "15",
+    "crontab": "",
+    "once": true,
+    "onceDelay": 2,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 160,
+    "y": 280,
+    "wires": [
+      [
+        "c0463a2de772179c"
+      ]
+    ]
+  },
+  {
+    "id": "c0463a2de772179c",
+    "type": "function",
+    "z": "0b64ce72c667f20b",
+    "name": "Build poll list",
+    "func": "\nconst CONFIG = {\n    specVersion: \"1.0\",\n    defaultBrainMode: \"Log only\",              // Disabled | Log only | Production\n    modeEntity: \"input_select.ev_charger_brain_mode\",\n    logFile: \"/share/ev_charger_sessions.csv\",\n    notifyService: \"notify.mobile_app_nta_p9a\", // Ret hvis din notify service hedder noget andet\n    sendNotificationsInLogOnly: false,\n\n    pollIntervalSeconds: 15,\n    cableEventWindowSeconds: 180,\n    pendingCableTimeoutSeconds: 600,\n    replugWindowSeconds: 7200,\n\n    connectedLikeStates: [\n        \"ready to charge\",\n        \"ready_to_charge\",\n        \"awaiting start\",\n        \"awaiting_start\",\n        \"charging\",\n        \"completed\",\n        \"complete\"\n    ],\n    disconnectedStates: [\n        \"car disconnected\",\n        \"car_disconnected\",\n        \"disconnected\"\n    ],\n    uncertainStates: [\n        \"unknown\",\n        \"unavailable\"\n    ],\n\n    cars: {\n        ellingo: {\n            name: \"ElLingo\",\n\n            // Primćr hurtig status fra Tesla Custom Integration\n            tracker: \"device_tracker.ellingo_location_tracker_2\",\n            chargeCablePrimary: \"binary_sensor.ellingo_charger\",\n            chargingPrimary: \"binary_sensor.ellingo_charging\",\n\n            // Fallback fra Tesla Fleet\n            trackerFleet: \"device_tracker.ellingo_location\",\n            chargeCableFallback: \"binary_sensor.ellingo_charge_cable\",\n            chargingFleet: \"sensor.ellingo_charging\",\n\n            // Kommandoer via Fleet\n            commandChargeSwitch: \"switch.ellingo_charge\"\n        },\n        blue_flux: {\n            name: \"Blue Flux\",\n\n            // Primćr hurtig status fra Tesla Custom Integration\n            tracker: \"device_tracker.location_tracker\",\n            chargeCablePrimary: \"binary_sensor.charger\",\n            chargingPrimary: \"binary_sensor.charging\",\n\n            // Fallback fra Tesla Fleet\n            trackerFleet: \"device_tracker.blue_flux_location\",\n            chargeCableFallback: \"binary_sensor.blue_flux_charge_cable\",\n            chargingFleet: \"sensor.blue_flux_charging\",\n\n            // Blue Flux er ny, sĺ kommandoer skal via Fleet\n            commandChargeSwitch: \"switch.blue_flux_charge\"\n        }\n    },\n\n    zones: {\n        home: {\n            name: \"Home / Anemonevej\",\n            matchStates: [\"home\"],\n            chargers: [\"garage\", \"hegn\"],\n            cars: [\"ellingo\", \"blue_flux\"]\n        },\n        \"I.A. Mřllersvej\": {\n            name: \"I.A. Mřllersvej\",\n            matchStates: [\"I.A. Mřllersvej\"],\n            chargers: [\"ia_moellersvej_1\", \"ia_moellersvej_2\"],\n            cars: [\"ellingo\", \"blue_flux\"]\n        }\n    },\n\n    chargers: {\n        garage: {\n            enabled: true,\n            name: \"Easee Garage\",\n            switch: \"switch.garage_is_enabled\",\n            defaultCar: \"ellingo\"\n        },\n        hegn: {\n            enabled: true,\n            name: \"Easee Hegn\",\n            switch: \"switch.hegn_is_enabled\",\n            defaultCar: \"blue_flux\"\n        },\n        ia_moellersvej_1: {\n            enabled: false,\n            name: \"Easee I.A. Mřllersvej 1\",\n            switch: \"switch.ia_moellersvej_1_is_enabled\",\n            defaultCar: null\n        },\n        ia_moellersvej_2: {\n            enabled: false,\n            name: \"Easee I.A. Mřllersvej 2\",\n            switch: \"switch.ia_moellersvej_2_is_enabled\",\n            defaultCar: null\n        }\n    }\n};\n\nfunction statusEntityFromSwitch(switchEntity) {\n    return switchEntity.replace(\"switch.\", \"sensor.\").replace(\"_is_enabled\", \"_status\");\n}\n\nfunction overrideEntityFromSwitch(switchEntity) {\n    return switchEntity.replace(\"switch.\", \"input_boolean.\").replace(\"_is_enabled\", \"_manual_until_disconnect\");\n}\n\nconst entities = new Set();\nentities.add(CONFIG.modeEntity);\n\nfor (const car of Object.values(CONFIG.cars)) {\n    if (car.tracker) entities.add(car.tracker);\n    if (car.trackerFleet) entities.add(car.trackerFleet);\n    if (car.chargeCablePrimary) entities.add(car.chargeCablePrimary);\n    if (car.chargeCableFallback) entities.add(car.chargeCableFallback);\n    if (car.chargingPrimary) entities.add(car.chargingPrimary);\n    if (car.chargingFleet) entities.add(car.chargingFleet);\n}\n\nfor (const [key, charger] of Object.entries(CONFIG.chargers)) {\n    if (!charger.enabled) continue;\n    const status = charger.status || statusEntityFromSwitch(charger.switch);\n    const override = charger.override || overrideEntityFromSwitch(charger.switch);\n    if (charger.switch) entities.add(charger.switch);\n    if (status) entities.add(status);\n    if (override) entities.add(override);\n}\n\nconst requests = Array.from(entities).filter(Boolean).map(entity_id => ({\n    entity_id,\n    _ev_poll: true,\n    _ev_poll_ts: Date.now()\n}));\n\nconst watchdog = {\n    _ev_watchdog: true,\n    payload: Date.now()\n};\n\nreturn [requests, watchdog];\n",
+    "outputs": 2,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 280,
+    "wires": [
+      [
+        "71dc9c9896648263"
+      ],
+      [
+        "ac1af817cb139dd5"
+      ]
+    ]
+  },
+  {
+    "id": "71dc9c9896648263",
+    "type": "api-current-state",
+    "z": "0b64ce72c667f20b",
+    "name": "Read HA state dynamic",
+    "server": "27dce734.128628",
+    "version": 3,
+    "outputs": 1,
+    "halt_if": "",
+    "halt_if_type": "str",
+    "halt_if_compare": "is",
+    "entity_id": "{{entity_id}}",
+    "state_type": "str",
+    "blockInputOverrides": false,
+    "outputProperties": [
+      {
+        "property": "payload",
+        "propertyType": "msg",
+        "value": "string",
+        "valueType": "entityState"
+      },
+      {
+        "property": "data",
+        "propertyType": "msg",
+        "value": "",
+        "valueType": "entity"
+      }
+    ],
+    "for": "0",
+    "forType": "num",
+    "forUnits": "minutes",
+    "override_topic": false,
+    "state_location": "payload",
+    "override_payload": "msg",
+    "entity_location": "data",
+    "override_data": "msg",
+    "x": 640,
+    "y": 240,
+    "wires": [
+      [
+        "e575531cc0879127"
+      ]
+    ]
+  },
+  {
+    "id": "ac1af817cb139dd5",
+    "type": "delay",
+    "z": "0b64ce72c667f20b",
+    "name": "Vent pĺ poll",
+    "pauseType": "delay",
+    "timeout": "4",
+    "timeoutUnits": "seconds",
+    "rate": "1",
+    "nbRateUnits": "1",
+    "rateUnits": "second",
+    "randomFirst": "1",
+    "randomLast": "5",
+    "randomUnits": "seconds",
+    "drop": false,
+    "allowrate": false,
+    "outputs": 1,
+    "x": 630,
+    "y": 320,
+    "wires": [
+      [
+        "e575531cc0879127"
+      ]
+    ]
+  },
+  {
+    "id": "e575531cc0879127",
+    "type": "function",
+    "z": "0b64ce72c667f20b",
+    "name": "EV Charger Brain v1.0",
+    "func": "\nconst CONFIG = {\n    specVersion: \"1.0\",\n    defaultBrainMode: \"Log only\",              // Disabled | Log only | Production\n    modeEntity: \"input_select.ev_charger_brain_mode\",\n    logFile: \"/share/ev_charger_sessions.csv\",\n    notifyService: \"notify.mobile_app_nta_p9a\", // Ret hvis din notify service hedder noget andet\n    sendNotificationsInLogOnly: false,\n\n    pollIntervalSeconds: 15,\n    cableEventWindowSeconds: 180,\n    pendingCableTimeoutSeconds: 600,\n    replugWindowSeconds: 7200,\n\n    connectedLikeStates: [\n        \"ready to charge\",\n        \"ready_to_charge\",\n        \"awaiting start\",\n        \"awaiting_start\",\n        \"charging\",\n        \"completed\",\n        \"complete\"\n    ],\n    disconnectedStates: [\n        \"car disconnected\",\n        \"car_disconnected\",\n        \"disconnected\"\n    ],\n    uncertainStates: [\n        \"unknown\",\n        \"unavailable\"\n    ],\n\n    cars: {\n        ellingo: {\n            name: \"ElLingo\",\n\n            // Primćr hurtig status fra Tesla Custom Integration\n            tracker: \"device_tracker.ellingo_location_tracker_2\",\n            chargeCablePrimary: \"binary_sensor.ellingo_charger\",\n            chargingPrimary: \"binary_sensor.ellingo_charging\",\n\n            // Fallback fra Tesla Fleet\n            trackerFleet: \"device_tracker.ellingo_location\",\n            chargeCableFallback: \"binary_sensor.ellingo_charge_cable\",\n            chargingFleet: \"sensor.ellingo_charging\",\n\n            // Kommandoer via Fleet\n            commandChargeSwitch: \"switch.ellingo_charge\"\n        },\n        blue_flux: {\n            name: \"Blue Flux\",\n\n            // Primćr hurtig status fra Tesla Custom Integration\n            tracker: \"device_tracker.location_tracker\",\n            chargeCablePrimary: \"binary_sensor.charger\",\n            chargingPrimary: \"binary_sensor.charging\",\n\n            // Fallback fra Tesla Fleet\n            trackerFleet: \"device_tracker.blue_flux_location\",\n            chargeCableFallback: \"binary_sensor.blue_flux_charge_cable\",\n            chargingFleet: \"sensor.blue_flux_charging\",\n\n            // Blue Flux er ny, sĺ kommandoer skal via Fleet\n            commandChargeSwitch: \"switch.blue_flux_charge\"\n        }\n    },\n\n    zones: {\n        home: {\n            name: \"Home / Anemonevej\",\n            matchStates: [\"home\"],\n            chargers: [\"garage\", \"hegn\"],\n            cars: [\"ellingo\", \"blue_flux\"]\n        },\n        \"I.A. Mřllersvej\": {\n            name: \"I.A. Mřllersvej\",\n            matchStates: [\"I.A. Mřllersvej\"],\n            chargers: [\"ia_moellersvej_1\", \"ia_moellersvej_2\"],\n            cars: [\"ellingo\", \"blue_flux\"]\n        }\n    },\n\n    chargers: {\n        garage: {\n            enabled: true,\n            name: \"Easee Garage\",\n            switch: \"switch.garage_is_enabled\",\n            defaultCar: \"ellingo\"\n        },\n        hegn: {\n            enabled: true,\n            name: \"Easee Hegn\",\n            switch: \"switch.hegn_is_enabled\",\n            defaultCar: \"blue_flux\"\n        },\n        ia_moellersvej_1: {\n            enabled: false,\n            name: \"Easee I.A. Mřllersvej 1\",\n            switch: \"switch.ia_moellersvej_1_is_enabled\",\n            defaultCar: null\n        },\n        ia_moellersvej_2: {\n            enabled: false,\n            name: \"Easee I.A. Mřllersvej 2\",\n            switch: \"switch.ia_moellersvej_2_is_enabled\",\n            defaultCar: null\n        }\n    }\n};\n\nfunction statusEntityFromSwitch(switchEntity) {\n    return switchEntity.replace(\"switch.\", \"sensor.\").replace(\"_is_enabled\", \"_status\");\n}\n\nfunction overrideEntityFromSwitch(switchEntity) {\n    return switchEntity.replace(\"switch.\", \"input_boolean.\").replace(\"_is_enabled\", \"_manual_until_disconnect\");\n}\n\nfunction nowMs() { return Date.now(); }\nfunction norm(v) { return String(v ?? \"\").trim(); }\nfunction normLower(v) { return norm(v).toLowerCase(); }\nfunction isOn(v) { return [\"on\", \"true\", \"connected\", \"yes\"].includes(normLower(v)); }\nfunction isOff(v) { return [\"off\", \"false\", \"disconnected\", \"no\"].includes(normLower(v)); }\nfunction csv(v) {\n    let s = String(v ?? \"\");\n    s = s.replace(/\\r?\\n/g, \" \").replace(/;/g, \",\");\n    return s;\n}\nfunction ts(ms) {\n    const d = new Date(ms || Date.now());\n    const pad = n => String(n).padStart(2, \"0\");\n    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;\n}\nfunction chargerStatusClass(state) {\n    const raw = normLower(state);\n    const canonical = raw.replace(/[_-]+/g, \" \").replace(/\\s+/g, \" \").trim();\n    const connected = CONFIG.connectedLikeStates.map(x => normLower(x).replace(/[_-]+/g, \" \").replace(/\\s+/g, \" \").trim());\n    const disconnected = CONFIG.disconnectedStates.map(x => normLower(x).replace(/[_-]+/g, \" \").replace(/\\s+/g, \" \").trim());\n    const uncertain = CONFIG.uncertainStates.map(x => normLower(x).replace(/[_-]+/g, \" \").replace(/\\s+/g, \" \").trim());\n    if (connected.includes(canonical)) return \"connected_like\";\n    if (disconnected.includes(canonical)) return \"disconnected\";\n    if (uncertain.includes(canonical)) return \"uncertain\";\n    return \"other\";\n}\nfunction getBrainMode(states) {\n    const s = states[CONFIG.modeEntity]?.state;\n    const v = norm(s || CONFIG.defaultBrainMode);\n    if ([\"Disabled\", \"Log only\", \"Production\"].includes(v)) return v;\n    const l = v.toLowerCase();\n    if (l === \"disabled\") return \"Disabled\";\n    if (l === \"production\") return \"Production\";\n    return \"Log only\";\n}\nfunction enabledChargers() {\n    return Object.fromEntries(Object.entries(CONFIG.chargers).filter(([_, c]) => c.enabled));\n}\nfunction statusEntity(chargerKey) {\n    const c = CONFIG.chargers[chargerKey];\n    return c.status || statusEntityFromSwitch(c.switch);\n}\nfunction overrideEntity(chargerKey) {\n    const c = CONFIG.chargers[chargerKey];\n    return c.override || overrideEntityFromSwitch(c.switch);\n}\nfunction chargerZone(chargerKey) {\n    for (const [zoneKey, z] of Object.entries(CONFIG.zones)) {\n        if ((z.chargers || []).includes(chargerKey)) return zoneKey;\n    }\n    return null;\n}\nfunction carTrackerStates(carKey, states) {\n    const car = CONFIG.cars[carKey];\n    if (!car) return [];\n    return [car.tracker, car.trackerFleet]\n        .filter(Boolean)\n        .map(e => ({ entity: e, state: norm(states[e]?.state || \"unknown\") }));\n}\nfunction stateMatchesZone(state, zoneKey) {\n    const zone = CONFIG.zones[zoneKey];\n    if (!zone) return false;\n    return (zone.matchStates || [zoneKey]).includes(state) || state === zoneKey;\n}\nfunction carZoneMatches(carKey, zoneKey, states) {\n    return carTrackerStates(carKey, states).some(t => stateMatchesZone(t.state, zoneKey));\n}\nfunction carCurrentZone(carKey, states) {\n    const trackerStates = carTrackerStates(carKey, states);\n    for (const t of trackerStates) {\n        for (const [zoneKey, z] of Object.entries(CONFIG.zones)) {\n            if ((z.matchStates || [zoneKey]).includes(t.state) || t.state === zoneKey) return zoneKey;\n        }\n    }\n    const primary = trackerStates[0]?.state;\n    return primary || \"unknown\";\n}\nfunction carCableEntities(carKey) {\n    const car = CONFIG.cars[carKey];\n    if (!car) return [];\n    return [\n        { source: \"primary\", entity: car.chargeCablePrimary },\n        { source: \"fallback\", entity: car.chargeCableFallback }\n    ].filter(x => x.entity);\n}\nfunction carCableState(carKey, states) {\n    const parts = carCableEntities(carKey).map(x => `${x.source}:${norm(states[x.entity]?.state || \"unknown\")}`);\n    return parts.join(\"|\") || \"unknown\";\n}\nfunction carCableIsOn(carKey, states) {\n    return carCableEntities(carKey).some(x => isOn(states[x.entity]?.state));\n}\nfunction carCableRecentlyOn(carKey, states, t) {\n    return carCableEntities(carKey).some(x => {\n        const lastOn = states[x.entity]?.lastOnTs || 0;\n        return lastOn && (t - lastOn) <= CONFIG.cableEventWindowSeconds * 1000;\n    });\n}\nfunction chargerSwitchState(chargerKey, states) {\n    const c = CONFIG.chargers[chargerKey];\n    return norm(states[c.switch]?.state || \"unknown\");\n}\nfunction chargerStatusState(chargerKey, states) {\n    return norm(states[statusEntity(chargerKey)]?.state || \"unknown\");\n}\nfunction assignedCarsExcept(sessions, chargerKey) {\n    const used = new Set();\n    for (const [ck, s] of Object.entries(sessions)) {\n        if (ck === chargerKey) continue;\n        if (s && s.assignedCar && [\"auto_assigned\", \"manual_until_disconnect\"].includes(s.mode)) {\n            used.add(s.assignedCar);\n        }\n    }\n    return used;\n}\nfunction entityRole(entity) {\n    if (entity === CONFIG.modeEntity) return { kind: \"mode\" };\n    for (const [carKey, car] of Object.entries(CONFIG.cars)) {\n        if (entity === car.tracker) return { kind: \"car_tracker\", carKey, source: \"primary\" };\n        if (entity === car.trackerFleet) return { kind: \"car_tracker\", carKey, source: \"fleet\" };\n        if (entity === car.chargeCablePrimary) return { kind: \"car_cable\", carKey, source: \"primary\" };\n        if (entity === car.chargeCableFallback) return { kind: \"car_cable\", carKey, source: \"fallback\" };\n        if (entity === car.chargingPrimary) return { kind: \"car_charging\", carKey, source: \"primary\" };\n        if (entity === car.chargingFleet) return { kind: \"car_charging\", carKey, source: \"fleet\" };\n    }\n    for (const [chargerKey, charger] of Object.entries(enabledChargers())) {\n        if (entity === charger.switch) return { kind: \"charger_switch\", chargerKey };\n        if (entity === statusEntity(chargerKey)) return { kind: \"charger_status\", chargerKey };\n        if (entity === overrideEntity(chargerKey)) return { kind: \"charger_override\", chargerKey };\n    }\n    return { kind: \"unknown\" };\n}\n\nlet states = flow.get(\"ev_brain_v10_states\") || {};\nlet sessions = flow.get(\"ev_brain_v10_sessions\") || {};\nlet meta = flow.get(\"ev_brain_v10_meta\") || { startedAt: nowMs(), headerWritten: false };\n\nfor (const [chargerKey, c] of Object.entries(enabledChargers())) {\n    if (!sessions[chargerKey]) {\n        sessions[chargerKey] = {\n            mode: \"disconnected\",\n            assignedCar: null,\n            lastAssignedCar: null,\n            lastConnectedTs: null,\n            lastDisconnectedTs: null,\n            pendingSinceTs: null,\n            pendingExpiredLogged: false,\n            lastAction: null\n        };\n    }\n}\n\nconst outServices = [];\nconst outLogs = [];\nconst outNotify = [];\nconst outDebug = [];\n\nfunction appendLog(fields) {\n    if (!meta.headerWritten) {\n        outLogs.push({ payload: \"timestamp;spec_version;brain_mode;zone;charger_key;charger_name;car_key;car_name;event;charger_status;charger_switch;car_zone;car_charge_cable;session_mode;action;reason;details\" });\n        meta.headerWritten = true;\n    }\n    const charger = fields.chargerKey ? CONFIG.chargers[fields.chargerKey] : null;\n    const car = fields.carKey ? CONFIG.cars[fields.carKey] : null;\n    const zone = fields.zoneKey || (fields.chargerKey ? chargerZone(fields.chargerKey) : \"\");\n    const line = [\n        ts(),\n        CONFIG.specVersion,\n        getBrainMode(states),\n        zone || \"\",\n        fields.chargerKey || \"\",\n        charger?.name || \"\",\n        fields.carKey || \"\",\n        car?.name || \"\",\n        fields.event || \"\",\n        fields.chargerStatus ?? (fields.chargerKey ? chargerStatusState(fields.chargerKey, states) : \"\"),\n        fields.chargerSwitch ?? (fields.chargerKey ? chargerSwitchState(fields.chargerKey, states) : \"\"),\n        fields.carZone ?? (fields.carKey ? carCurrentZone(fields.carKey, states) : \"\"),\n        fields.carCable ?? (fields.carKey ? carCableState(fields.carKey, states) : \"\"),\n        fields.sessionMode || (fields.chargerKey ? sessions[fields.chargerKey]?.mode : \"\"),\n        fields.action || \"none\",\n        fields.reason || \"\",\n        fields.details || \"\"\n    ].map(csv).join(\";\");\n    outLogs.push({ payload: line });\n}\nfunction notify(title, message) {\n    const mode = getBrainMode(states);\n    if (mode === \"Production\" || CONFIG.sendNotificationsInLogOnly) {\n        outNotify.push({ title, payload: message });\n    }\n}\nfunction planService(haAction, entityId, fields) {\n    const mode = getBrainMode(states);\n    let logAction = haAction;\n    if (mode === \"Log only\") logAction = \"WOULD_\" + haAction;\n    if (mode === \"Disabled\") logAction = \"SKIP_\" + haAction;\n    appendLog({ ...fields, action: logAction });\n    if (mode === \"Production\") {\n        outServices.push({ ha_action: haAction, entity_id: entityId, brain_mode: mode, payload: { entity_id: entityId } });\n    }\n}\nfunction turnOnCharger(chargerKey, reason, carKey, event) {\n    const sw = CONFIG.chargers[chargerKey].switch;\n    const current = chargerSwitchState(chargerKey, states);\n    sessions[chargerKey].lastAction = \"turn_on\";\n    if (isOn(current)) {\n        appendLog({ chargerKey, carKey, event, action: \"already_on\", reason, sessionMode: sessions[chargerKey].mode });\n    } else {\n        planService(\"switch.turn_on\", sw, { chargerKey, carKey, event, reason, sessionMode: sessions[chargerKey].mode });\n    }\n}\nfunction turnOffCharger(chargerKey, reason, carKey, event) {\n    const sw = CONFIG.chargers[chargerKey].switch;\n    const current = chargerSwitchState(chargerKey, states);\n    sessions[chargerKey].lastAction = \"turn_off\";\n    if (isOff(current)) {\n        appendLog({ chargerKey, carKey, event, action: \"already_off\", reason, sessionMode: sessions[chargerKey].mode });\n    } else {\n        planService(\"switch.turn_off\", sw, { chargerKey, carKey, event, reason, sessionMode: sessions[chargerKey].mode });\n    }\n}\nfunction clearOverride(chargerKey, reason, event) {\n    const ov = overrideEntity(chargerKey);\n    const current = norm(states[ov]?.state || \"unknown\");\n    if (isOn(current)) {\n        planService(\"input_boolean.turn_off\", ov, { chargerKey, event, reason, sessionMode: sessions[chargerKey].mode });\n    }\n}\nfunction assignAndTurnOn(chargerKey, carKey, reason, event) {\n    sessions[chargerKey].mode = \"auto_assigned\";\n    sessions[chargerKey].assignedCar = carKey;\n    sessions[chargerKey].lastAssignedCar = carKey;\n    sessions[chargerKey].pendingSinceTs = null;\n    sessions[chargerKey].pendingExpiredLogged = false;\n    appendLog({ chargerKey, carKey, event: event || \"assigned\", action: \"assign\", reason, sessionMode: sessions[chargerKey].mode });\n    turnOnCharger(chargerKey, reason, carKey, event || \"turn_on\");\n}\nfunction validCandidatesForCharger(chargerKey) {\n    const zoneKey = chargerZone(chargerKey);\n    const zone = CONFIG.zones[zoneKey];\n    const used = assignedCarsExcept(sessions, chargerKey);\n    if (!zone) return { zoneKey, candidates: [], cableCandidates: [] };\n    const candidates = (zone.cars || [])\n        .filter(carKey => CONFIG.cars[carKey])\n        .filter(carKey => !used.has(carKey))\n        .filter(carKey => carZoneMatches(carKey, zoneKey, states));\n    const t = nowMs();\n    const cableCandidates = candidates.filter(carKey => {\n        return carCableIsOn(carKey, states) || carCableRecentlyOn(carKey, states, t);\n    });\n    return { zoneKey, candidates, cableCandidates };\n}\nfunction tryMatch(chargerKey, reasonBase) {\n    const { zoneKey, candidates, cableCandidates } = validCandidatesForCharger(chargerKey);\n    const c = CONFIG.chargers[chargerKey];\n    if (cableCandidates.length === 1) {\n        assignAndTurnOn(chargerKey, cableCandidates[0], reasonBase || \"charge_cable_and_charger_same_zone\", \"connected_like\");\n        return true;\n    }\n    if (cableCandidates.length > 1) {\n        if (c.defaultCar && cableCandidates.includes(c.defaultCar)) {\n            assignAndTurnOn(chargerKey, c.defaultCar, \"default_tiebreaker_same_zone\", \"connected_like\");\n            return true;\n        }\n        sessions[chargerKey].mode = \"ambiguous\";\n        appendLog({ chargerKey, event: \"ambiguous\", action: \"none\", reason: \"multiple_valid_cable_candidates_no_default\", details: cableCandidates.join(\",\"), sessionMode: \"ambiguous\" });\n        notify(\"EV Charger Brain: Ambiguous\", `${c.name}: flere valide biler i ${zoneKey}: ${cableCandidates.join(\", \")}`);\n        return false;\n    }\n    const wasPending = sessions[chargerKey].mode === \"pending_match\";\n    sessions[chargerKey].mode = \"pending_match\";\n    if (!sessions[chargerKey].pendingSinceTs) sessions[chargerKey].pendingSinceTs = nowMs();\n    sessions[chargerKey].pendingExpiredLogged = false;\n    if (!wasPending) {\n        appendLog({ chargerKey, event: \"pending_match\", action: \"none\", reason: \"no_known_car_with_charge_cable_in_zone\", details: `cars_in_zone=${candidates.join(\",\")}`, sessionMode: \"pending_match\" });\n    }\n    return false;\n}\nfunction carStillValidForReplug(carKey, zoneKey) {\n    if (!CONFIG.cars[carKey]) return false;\n    const currentZone = carCurrentZone(carKey, states);\n    if (currentZone === zoneKey) return true;\n    const trackerState = normLower(states[CONFIG.cars[carKey].tracker]?.state);\n    if ([\"unknown\", \"unavailable\"].includes(trackerState)) return true;\n    return false;\n}\nfunction handleConnectedLike(chargerKey, reason) {\n    const t = nowMs();\n    const s = sessions[chargerKey];\n    const zoneKey = chargerZone(chargerKey);\n    s.lastConnectedTs = t;\n    const ov = overrideEntity(chargerKey);\n    if (isOn(states[ov]?.state)) {\n        s.mode = \"manual_until_disconnect\";\n        appendLog({ chargerKey, event: \"connected_like\", action: \"manual_mode\", reason: \"manual_override_active\", sessionMode: s.mode });\n        turnOnCharger(chargerKey, \"manual_override_active\", s.assignedCar, \"override_connected_like\");\n        return;\n    }\n    if (s.lastAssignedCar && s.lastDisconnectedTs && (t - s.lastDisconnectedTs) <= CONFIG.replugWindowSeconds * 1000 && carStillValidForReplug(s.lastAssignedCar, zoneKey)) {\n        assignAndTurnOn(chargerKey, s.lastAssignedCar, \"replug_same_session\", \"reconnect\");\n        return;\n    }\n    tryMatch(chargerKey, reason || \"connected_like\");\n}\nfunction handleDisconnected(chargerKey) {\n    const s = sessions[chargerKey];\n    const previousCar = s.assignedCar || s.lastAssignedCar || null;\n    if (s.assignedCar) s.lastAssignedCar = s.assignedCar;\n    s.assignedCar = null;\n    s.mode = \"disconnected\";\n    s.lastDisconnectedTs = nowMs();\n    s.pendingSinceTs = null;\n    s.pendingExpiredLogged = false;\n    appendLog({ chargerKey, carKey: previousCar, event: \"disconnected\", action: \"clear_assignment\", reason: \"charger_disconnected\", sessionMode: s.mode });\n    turnOffCharger(chargerKey, \"charger_disconnected\", previousCar, \"disconnect\");\n    clearOverride(chargerKey, \"charger_disconnected\", \"override_cleared_by_disconnect\");\n}\nfunction handleCarCableOn(carKey) {\n    const zoneKey = carCurrentZone(carKey, states);\n    for (const chargerKey of Object.keys(enabledChargers())) {\n        const s = sessions[chargerKey];\n        if (chargerZone(chargerKey) !== zoneKey) continue;\n        if (s.mode === \"pending_match\" || chargerStatusClass(chargerStatusState(chargerKey, states)) === \"connected_like\") {\n            tryMatch(chargerKey, \"charge_cable_update_after_pending\");\n        }\n    }\n}\nfunction handleOverride(chargerKey, newState) {\n    const s = sessions[chargerKey];\n    if (isOn(newState)) {\n        s.mode = \"manual_until_disconnect\";\n        appendLog({ chargerKey, event: \"override_on\", action: \"manual_mode\", reason: \"helper_on\", sessionMode: s.mode });\n        turnOnCharger(chargerKey, \"manual_override_on\", s.assignedCar, \"override_on\");\n        notify(\"EV Charger Brain: Override\", `${CONFIG.chargers[chargerKey].name}: manual until disconnect er slĺet til.`);\n    } else if (isOff(newState) && s.mode === \"manual_until_disconnect\") {\n        s.mode = chargerStatusClass(chargerStatusState(chargerKey, states)) === \"connected_like\" ? \"pending_match\" : \"disconnected\";\n        appendLog({ chargerKey, event: \"override_off\", action: \"none\", reason: \"helper_off\", sessionMode: s.mode });\n    }\n}\nfunction watchdog() {\n    for (const chargerKey of Object.keys(enabledChargers())) {\n        const s = sessions[chargerKey];\n        const cls = chargerStatusClass(chargerStatusState(chargerKey, states));\n        if (cls === \"disconnected\") {\n            if (!isOff(chargerSwitchState(chargerKey, states))) {\n                s.mode = \"disconnected\";\n                turnOffCharger(chargerKey, \"watchdog_disconnected_switch_on\", s.assignedCar, \"watchdog\");\n            }\n            if (isOn(states[overrideEntity(chargerKey)]?.state)) {\n                clearOverride(chargerKey, \"watchdog_disconnected_override_on\", \"watchdog\");\n            }\n        }\n        if (cls === \"connected_like\") {\n            if ([\"disconnected\", \"pending_match\"].includes(s.mode)) {\n                tryMatch(chargerKey, \"watchdog_re_evaluate_connected_like\");\n            }\n            if (s.mode === \"pending_match\" && s.pendingSinceTs && (nowMs() - s.pendingSinceTs) > CONFIG.pendingCableTimeoutSeconds * 1000 && !s.pendingExpiredLogged) {\n                s.mode = \"connected_unassigned\";\n                s.pendingExpiredLogged = true;\n                appendLog({ chargerKey, event: \"connected_unassigned\", action: \"none\", reason: \"pending_match_timeout\", details: `timeout_seconds=${CONFIG.pendingCableTimeoutSeconds}`, sessionMode: s.mode });\n                notify(\"EV Charger Brain: Unassigned\", `${CONFIG.chargers[chargerKey].name}: bil/lader kunne ikke matches sikkert.`);\n            }\n        }\n    }\n}\n\n// Process incoming state poll\nif (msg._ev_poll) {\n    const entity = msg.entity_id || msg.topic || msg.data?.entity_id;\n    const newState = norm(msg.payload ?? msg.data?.state);\n    if (entity) {\n        const prev = states[entity]?.state;\n        const changed = prev !== undefined && prev !== newState;\n        const role = entityRole(entity);\n        const entry = states[entity] || {};\n        entry.prevState = prev;\n        entry.state = newState;\n        entry.updatedTs = nowMs();\n        if (changed) entry.changedTs = nowMs();\n        if (role.kind === \"car_cable\" && isOn(newState) && (changed || !entry.lastOnTs)) entry.lastOnTs = nowMs();\n        if (role.kind === \"car_cable\" && isOff(newState) && changed) entry.lastOffTs = nowMs();\n        states[entity] = entry;\n\n        if (changed) {\n            if (role.kind === \"charger_status\") {\n                const cls = chargerStatusClass(newState);\n                if (cls === \"connected_like\") handleConnectedLike(role.chargerKey, \"charger_status_changed_connected_like\");\n                else if (cls === \"disconnected\") handleDisconnected(role.chargerKey);\n                else if (cls === \"uncertain\") appendLog({ chargerKey: role.chargerKey, event: \"charger_status_uncertain\", action: \"none\", reason: newState, sessionMode: sessions[role.chargerKey]?.mode });\n                else appendLog({ chargerKey: role.chargerKey, event: \"charger_status_other\", action: \"none\", reason: newState, sessionMode: sessions[role.chargerKey]?.mode });\n            }\n            if (role.kind === \"car_cable\") {\n                appendLog({ carKey: role.carKey, event: \"car_charge_cable_changed\", action: \"none\", reason: `${role.source || \"unknown\"}:${newState}` });\n                if (isOn(newState)) handleCarCableOn(role.carKey);\n            }\n            if (role.kind === \"car_charging\") {\n                appendLog({ carKey: role.carKey, event: \"car_charging_changed\", action: \"none\", reason: `${role.source || \"unknown\"}:${newState}` });\n            }\n            if (role.kind === \"car_tracker\") {\n                const assigned = Object.entries(sessions).find(([_, s]) => s.assignedCar === role.carKey);\n                if (assigned) {\n                    const [chargerKey] = assigned;\n                    const cls = chargerStatusClass(chargerStatusState(chargerKey, states));\n                    if (cls === \"connected_like\") appendLog({ chargerKey, carKey: role.carKey, event: \"car_state_ignored\", action: \"none\", reason: `tracker_changed_to_${newState}_but_charger_connected_like` });\n                } else {\n                    appendLog({ carKey: role.carKey, event: \"car_tracker_changed\", action: \"none\", reason: newState });\n                }\n            }\n            if (role.kind === \"charger_override\") handleOverride(role.chargerKey, newState);\n            if (role.kind === \"mode\") appendLog({ event: \"brain_mode_changed\", action: \"none\", reason: newState });\n        }\n    }\n}\n\nif (msg._ev_watchdog) {\n    watchdog();\n}\n\nflow.set(\"ev_brain_v10_states\", states);\nflow.set(\"ev_brain_v10_sessions\", sessions);\nflow.set(\"ev_brain_v10_meta\", meta);\n\nconst mode = getBrainMode(states);\nnode.status({ fill: mode === \"Production\" ? \"green\" : (mode === \"Disabled\" ? \"grey\" : \"yellow\"), shape: \"dot\", text: `v${CONFIG.specVersion} ${mode}` });\noutDebug.push({ payload: { mode, sessions, updated: ts() } });\n\nreturn [outServices, outLogs, outNotify, outDebug];\n",
+    "outputs": 4,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 920,
+    "y": 280,
+    "wires": [
+      [
+        "ab6d76ea1562575b"
+      ],
+      [
+        "3950da27ba3d6272",
+        "e6719766b2a42682"
+      ],
+      [
+        "9f910961028e42b9"
+      ],
+      [
+        "9bedb50ff58080b5"
+      ]
+    ]
+  },
+  {
+    "id": "ab6d76ea1562575b",
+    "type": "switch",
+    "z": "0b64ce72c667f20b",
+    "name": "Production gate",
+    "property": "brain_mode",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "eq",
+        "v": "Production",
+        "vt": "str"
+      },
+      {
+        "t": "else"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 2,
+    "x": 1170,
+    "y": 200,
+    "wires": [
+      [
+        "b8f619e4e2f8a7d0"
+      ],
+      [
+        "4a9b1ed67bbf923c"
+      ]
+    ]
+  },
+  {
+    "id": "4a9b1ed67bbf923c",
+    "type": "debug",
+    "z": "0b64ce72c667f20b",
+    "name": "Service skipped unless Production",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1460,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "b8f619e4e2f8a7d0",
+    "type": "switch",
+    "z": "0b64ce72c667f20b",
+    "name": "Route service action",
+    "property": "ha_action",
+    "propertyType": "msg",
+    "rules": [
+      {
+        "t": "eq",
+        "v": "switch.turn_on",
+        "vt": "str"
+      },
+      {
+        "t": "eq",
+        "v": "switch.turn_off",
+        "vt": "str"
+      },
+      {
+        "t": "eq",
+        "v": "input_boolean.turn_off",
+        "vt": "str"
+      }
+    ],
+    "checkall": "true",
+    "repair": false,
+    "outputs": 3,
+    "x": 1410,
+    "y": 180,
+    "wires": [
+      [
+        "8216bfaaef6ff5a6"
+      ],
+      [
+        "536ee6072c82d38f"
+      ],
+      [
+        "732e3b12be985c56"
+      ]
+    ]
+  },
+  {
+    "id": "8216bfaaef6ff5a6",
+    "type": "api-call-service",
+    "z": "0b64ce72c667f20b",
+    "name": "HA switch.turn_on",
+    "server": "27dce734.128628",
+    "version": 7,
+    "debugenabled": false,
+    "action": "switch.turn_on",
+    "floorId": [],
+    "areaId": [],
+    "deviceId": [],
+    "entityId": [],
+    "labelId": [],
+    "data": "{\"entity_id\":\"{{entity_id}}\"}",
+    "dataType": "json",
+    "mergeContext": "",
+    "mustacheAltTags": false,
+    "outputProperties": [],
+    "queue": "none",
+    "blockInputOverrides": false,
+    "domain": "switch",
+    "service": "turn_on",
+    "x": 1660,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "536ee6072c82d38f",
+    "type": "api-call-service",
+    "z": "0b64ce72c667f20b",
+    "name": "HA switch.turn_off",
+    "server": "27dce734.128628",
+    "version": 7,
+    "debugenabled": false,
+    "action": "switch.turn_off",
+    "floorId": [],
+    "areaId": [],
+    "deviceId": [],
+    "entityId": [],
+    "labelId": [],
+    "data": "{\"entity_id\":\"{{entity_id}}\"}",
+    "dataType": "json",
+    "mergeContext": "",
+    "mustacheAltTags": false,
+    "outputProperties": [],
+    "queue": "none",
+    "blockInputOverrides": false,
+    "domain": "switch",
+    "service": "turn_off",
+    "x": 1660,
+    "y": 180,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "732e3b12be985c56",
+    "type": "api-call-service",
+    "z": "0b64ce72c667f20b",
+    "name": "HA input_boolean.turn_off",
+    "server": "27dce734.128628",
+    "version": 7,
+    "debugenabled": false,
+    "action": "input_boolean.turn_off",
+    "floorId": [],
+    "areaId": [],
+    "deviceId": [],
+    "entityId": [],
+    "labelId": [],
+    "data": "{\"entity_id\":\"{{entity_id}}\"}",
+    "dataType": "json",
+    "mergeContext": "",
+    "mustacheAltTags": false,
+    "outputProperties": [],
+    "queue": "none",
+    "blockInputOverrides": false,
+    "domain": "input_boolean",
+    "service": "turn_off",
+    "x": 1690,
+    "y": 240,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "3950da27ba3d6272",
+    "type": "file",
+    "z": "0b64ce72c667f20b",
+    "name": "CSV log /share/ev_charger_sessions.csv",
+    "filename": "/share/ev_charger_sessions.csv",
+    "filenameType": "str",
+    "appendNewline": true,
+    "createDir": false,
+    "overwriteFile": "false",
+    "encoding": "none",
+    "x": 1260,
+    "y": 380,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "e6719766b2a42682",
+    "type": "debug",
+    "z": "0b64ce72c667f20b",
+    "name": "CSV log debug",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1210,
+    "y": 430,
+    "wires": []
+  },
+  {
+    "id": "9f910961028e42b9",
+    "type": "api-call-service",
+    "z": "0b64ce72c667f20b",
+    "name": "notify NTA via Mobil",
+    "server": "27dce734.128628",
+    "version": 7,
+    "debugenabled": false,
+    "action": "notify.mobile_app_pixel_9a",
+    "floorId": [],
+    "areaId": [],
+    "deviceId": [],
+    "entityId": [],
+    "labelId": [],
+    "data": "{\"title\":\"{{title}}\",\"message\":\"{{payload}}\"}",
+    "dataType": "json",
+    "mergeContext": "",
+    "mustacheAltTags": false,
+    "outputProperties": [],
+    "queue": "none",
+    "blockInputOverrides": false,
+    "domain": "notify",
+    "service": "mobile_app_pixel_9a",
+    "x": 1220,
+    "y": 500,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "9bedb50ff58080b5",
+    "type": "debug",
+    "z": "0b64ce72c667f20b",
+    "name": "Brain state debug",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1210,
+    "y": 560,
+    "wires": []
+  },
+  {
+    "id": "27dce734.128628",
+    "type": "server",
+    "name": "Home Assistant",
+    "addon": true,
+    "rejectUnauthorizedCerts": true,
+    "ha_boolean": "",
+    "connectionDelay": false,
+    "cacheJson": false,
+    "heartbeat": false,
+    "heartbeatInterval": "",
+    "statusSeparator": "",
+    "enableGlobalContextStore": false
+  },
+  {
+    "id": "1b40a95f9d529f11",
+    "type": "global-config",
+    "env": [],
+    "modules": {
+      "node-red-contrib-home-assistant-websocket": "0.81.0"
+    }
+  }
+]
