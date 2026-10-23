@@ -21,6 +21,8 @@ async def async_setup_entry(hass, entry):
 
 
 async def async_reload(hass, entry):
+    if entry.runtime_data.config == {**entry.data, **entry.options}:
+        return  # Internal verified source reconciliation must not reset sessions.
     await hass.config_entries.async_reload(entry.entry_id)
 
 

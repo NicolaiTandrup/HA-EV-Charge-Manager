@@ -222,6 +222,9 @@ class Editor:
                         "id": self.provider["id"],
                         "device": self.provider["device"],
                         "fields": dict(user_input),
+                        "entity_refs": {
+                            field: reg.async_get(eid).id for field, eid in user_input.items()
+                        },
                     }
                     if getattr(self, "editing_provider", False):
                         vehicle["providers"] = [

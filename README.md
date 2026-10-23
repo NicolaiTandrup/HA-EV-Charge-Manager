@@ -49,8 +49,9 @@ Add **EV Charge Manager** under Settings → Devices & services:
 5. Add chargers using their actual physical connection/status sensor and device.
    The legacy Garage switch mapping is unverified and is never imported.
 6. Save. Configure options to edit items/provider fields or change module settings. Source
-   mappings are snapshots of registry choices, not automatic reassignment when
-   devices/entities change. Review mappings after replacing a source device.
+   vehicle fields pin stable HA registry IDs. Renames follow the verified registry
+   entry; changed device ownership, disabled/deleted entries or unregistered states
+   fail closed. Replacing a device requires explicit reviewed remapping.
 
 Observe fresh input sources before trusting a forecast. `last_reported` means HA
 received a state, not that an upstream integration fetched fresh vehicle data.

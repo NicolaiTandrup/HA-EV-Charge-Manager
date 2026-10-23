@@ -18,6 +18,25 @@ from custom_components.ev_charge_manager.sessions import Sessions
 from custom_components.ev_charge_manager.vehicle import VehicleRegistry, discover
 
 
+def register_provider(hass, fields, label="custom"):
+    entry = MockConfigEntry(domain="demo", title=label)
+    entry.add_to_hass(hass)
+    device = dr.async_get(hass).async_get_or_create(
+        config_entry_id=entry.entry_id, identifiers={("demo", entry.entry_id)}
+    )
+    mapped = {}
+    for field, eid in fields.items():
+        old = hass.states.get(eid)
+        domain, obj = eid.split(".")
+        entity = er.async_get(hass).async_get_or_create(
+            domain, "demo", eid, suggested_object_id=obj, device_id=device.id
+        )
+        mapped[field] = entity.entity_id
+        if old:
+            hass.states.async_set(entity.entity_id, old.state, dict(old.attributes))
+    return {"id": label, "device": device.id, "fields": mapped}
+
+
 def model(hass, brain=True, optimizer=True):
     now = dt_util.utcnow()
     values = {
@@ -28,9 +47,11 @@ def model(hass, brain=True, optimizer=True):
         "charging": "off",
         "power": "0",
     }
-    fields = {}
+    fields = {field: f"sensor.car_{field}" for field in values}
+    provider = register_provider(hass, fields)
+    fields = provider["fields"]
     for field, value in values.items():
-        eid = f"sensor.car_{field}"
+        eid = fields[field]
         fields[field] = eid
         hass.states.async_set(eid, value, {"unit_of_measurement": "kW"} if field == "power" else {})
     hass.states.async_set("sensor.charger", "charging")
@@ -57,7 +78,7 @@ def model(hass, brain=True, optimizer=True):
                 "name": "Car",
                 "capacity_kwh": 75,
                 "max_kw": 11,
-                "providers": [{"id": "custom", "device": "device", "fields": fields}],
+                "providers": [provider],
             }
         ],
         "chargers": [
@@ -108,7 +129,9 @@ async def test_fallback_is_per_field_and_fresh_primary_off_wins(hass):
     hass.states.async_set("sensor.fallback_soc", "70")
     hass.states.async_set("sensor.fallback_cable", "on")
     v["providers"].append(
-        {"id": "fleet", "fields": {"soc": "sensor.fallback_soc", "cable": "sensor.fallback_cable"}}
+        register_provider(
+            hass, {"soc": "sensor.fallback_soc", "cable": "sensor.fallback_cable"}, "fleet"
+        )
     )
     hass.states.async_set("sensor.car_soc", "nan")
     hass.states.async_set("sensor.car_cable", "off")

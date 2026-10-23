@@ -10,7 +10,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ev_charge_manager.vehicle import FieldValue, snapshot_health
 
-from .test_manager import model
+from .test_manager import model, register_provider
 
 NOW = datetime(2026, 10, 23, 12, tzinfo=UTC)
 
@@ -65,7 +65,7 @@ async def test_report_skew_blocks_forecast_then_recovers_without_io(hass, freeze
     # Fresh valid Custom remains preferred over a newer fallback value.
     hass.states.async_set("sensor.fleet_soc", "90")
     config["vehicles"][0]["providers"].append(
-        {"id": "fleet", "fields": {"soc": "sensor.fleet_soc"}}
+        register_provider(hass, {"soc": "sensor.fleet_soc"}, "fleet")
     )
     freezer.move_to(now + timedelta(seconds=121))
     hass.states.async_set("sensor.car_soc", "61")

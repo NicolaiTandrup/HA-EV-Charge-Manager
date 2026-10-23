@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
 FIELDS = {"soc", "target", "cable", "tracker", "charging", "power", "odometer"}
@@ -80,6 +81,45 @@ class VehicleRegistry:
     def __init__(self, hass, vehicles, ttl=900, snapshot_skew_seconds=120):
         self.hass, self.vehicles, self.ttl = hass, vehicles, ttl
         self.snapshot_skew_seconds = snapshot_skew_seconds
+        self.reconcile()
+
+    def source_entity(self, provider, field):
+        ref = provider.get("entity_refs", {}).get(field)
+        entity = er.async_get(self.hass).async_get(ref) if ref else None
+        device = provider.get("device")
+        if not device or not dr.async_get(self.hass).async_get(device):
+            return None
+        owners = {
+            v["id"]
+            for v in self.vehicles
+            for p in v.get("providers", [])
+            if p.get("device") == device
+        }
+        if len(owners) != 1 or entity is None or entity.device_id != device or entity.disabled_by:
+            return None
+        return entity.entity_id
+
+    def reconcile(self):
+        """Pin legacy references once; never replace a missing bound registry ID."""
+        changed = False
+        registry = er.async_get(self.hass)
+        for vehicle in self.vehicles:
+            for provider in vehicle.get("providers", []):
+                refs = provider.setdefault("entity_refs", {})
+                for field, entity_id in provider.get("fields", {}).items():
+                    if field not in refs:
+                        entity = registry.async_get(entity_id)
+                        refs[field] = (
+                            entity.id
+                            if entity and entity.device_id == provider.get("device")
+                            else None
+                        )
+                        changed = True
+                    current = self.source_entity(provider, field)
+                    if current and current != entity_id:
+                        provider["fields"][field] = current
+                        changed = True
+        return changed
 
     def assess(self, snapshots):
         return {
@@ -90,7 +130,7 @@ class VehicleRegistry:
     def resolve(self, vehicle, field, now):
         """A valid fresh primary off/zero wins over fallback on/nonzero."""
         for provider in vehicle.get("providers", []):
-            entity_id = provider.get("fields", {}).get(field)
+            entity_id = self.source_entity(provider, field)
             state = self.hass.states.get(entity_id) if entity_id else None
             if state is None or not 0 <= (now - state.last_reported).total_seconds() <= self.ttl:
                 continue

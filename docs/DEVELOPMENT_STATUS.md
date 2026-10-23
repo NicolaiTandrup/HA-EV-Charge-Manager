@@ -50,12 +50,32 @@ another root-level DEVELOPMENT_STATUS.md.
 - Nine additional snapshot cases validated, including recovery and both independent
   Brain toggle states. No vehicle polling, wakeup, command transport or live trial.
 
+## Registry continuation checkpoint (2026-10-23)
+
+Issue #2: stable vehicle-field registry bindings implemented in the commit titled
+`Reconcile renamed vehicle sources by verified registry identity`. Four regression
+cases were observed failing before the fix; six registry tests now pass. Full suite:
+**94 passed, no skips**, Ruff/format passed; official local hassfest reports zero
+invalid integrations. CI for this new checkpoint must be checked after push.
+
+Legacy valid device-owned fields pin a persistent registry ID on setup. Runtime
+reads verify registry identity, expected live device ownership, disabled state and
+unique logical owner. Renames update this integration's stored source mapping and
+event subscriptions without reloading/resetting sessions. Deleted IDs never rebind
+by a reused name. Missing/unverifiable legacy mappings require explicit remapping;
+raw unregistered states are no longer accepted as vehicle sources. Existing test
+fixtures now register real HA devices/entities rather than relying on raw strings.
+
+Next: provider reorder/remove/replace UI, then persistent Price Engine (#9), refresh
+schedule (#10), verified DSO adapter (#7) and dated components (#8). Existing price
+and charger-status string references are outside this vehicle-source checkpoint.
+No live commands, production changes, merge or release.
+
 ## In progress
 
-No unfinished code or local failing test at this checkpoint. Snapshot guard and
-handoff workflow are committed and pushed; implementation CI passed. PR #6 remains
-an unmerged draft. The next development task is registry source-reference rename
-handling below. Do not repeat the snapshot guard, port or initial setup.
+Registry rename slice is locally validated. Check its remote CI and continue
+provider-management work. PR #6 remains an unmerged draft. Do not repeat the
+snapshot guard, port, setup or rename implementation.
 
 ## Remaining tasks, in priority order
 

@@ -1,11 +1,13 @@
 """One shared registry and Brain, with independent per-site planners."""
 
 import logging
+from copy import deepcopy
 from datetime import timedelta
 from types import SimpleNamespace
 
+from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import callback
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
@@ -87,7 +89,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
             hass, LOGGER, name=DOMAIN, config_entry=entry, update_interval=timedelta(seconds=15)
         )
         self.entry = entry
-        self.config = {**entry.data, **entry.options}
+        self.config = deepcopy({**entry.data, **entry.options})
         self.registry = VehicleRegistry(
             hass,
             self.config.get("vehicles", []),
@@ -123,7 +125,14 @@ class ManagerCoordinator(DataUpdateCoordinator):
             else {}
         )
 
+    def persist_sources(self):
+        target = "options" if self.entry.options else "data"
+        values = dict(getattr(self.entry, target))
+        values["vehicles"] = deepcopy(self.registry.vehicles)
+        self.hass.config_entries.async_update_entry(self.entry, **{target: values})
+
     async def async_load(self):
+        self.persist_sources()
         self.sessions = Sessions(await self.store.async_load())
         for site in self.sites.values():
             await site.async_load()
@@ -134,7 +143,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
             await site.async_save()
 
     @callback
-    def async_listen(self):
+    def _source_ids(self):
         ids = {c["status"] for c in self.config.get("chargers", [])}
         ids.update(s["price_entity"] for s in self.config.get("sites", []) if s.get("price_entity"))
         for site in self.config.get("sites", []):
@@ -142,13 +151,25 @@ class ManagerCoordinator(DataUpdateCoordinator):
         for vehicle in self.registry.vehicles:
             for provider in vehicle.get("providers", []):
                 ids.update(provider["fields"].values())
-        if ids:
-            self.entry.async_on_unload(
-                async_track_state_change_event(self.hass, ids, self._changed)
-            )
+        return ids
+
+    @callback
+    def async_listen(self):
+        self.entry.async_on_unload(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._changed))
+        self.entry.async_on_unload(
+            self.hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, self._registry_changed)
+        )
+
+    @callback
+    def _registry_changed(self, event):
+        if self.registry.reconcile():
+            self.persist_sources()
+        self.hass.async_create_task(self.async_request_refresh())
 
     @callback
     def _changed(self, event):
+        if event.data["entity_id"] not in self._source_ids():
+            return
         # Capture unplug edges even when a rapid replug coalesces refresh requests.
         state = event.data.get("new_state")
         if state and normalize(state.state) in DISCONNECTED:
