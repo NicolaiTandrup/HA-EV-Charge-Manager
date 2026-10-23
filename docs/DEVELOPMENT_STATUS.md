@@ -13,15 +13,16 @@ another root-level DEVELOPMENT_STATUS.md.
   stacked on `feat/unified-architecture`. Keep both drafts unmerged.
 - Relevant requirements: Manager Issues #1–#4; active next slice is Issue #2,
   mismatched provider snapshots. Read current issue/PR changes before continuing.
-- Last successful implementation commit: `d41120fa181d00cfb04f2dce51375e998d328746`.
-  Local: 79 tests passed, no skips; Ruff passed. GitHub push and PR checks for that
-  exact head all passed: tests, hassfest and HACS. Confirmed on continuation.
+- Last successful implementation commit: `e2bd6b36dc7e5a0616ecba186c124e8bc4d86410`
+  (`Guard inconsistent vehicle snapshots before forecasting`). Local: **88 tests
+  passed, zero skipped; 91% statement coverage; Ruff passed; official hassfest:
+  one integration, zero invalid**. GitHub push AND PR checks for this exact head
+  all passed: tests, hassfest and HACS.
+- Permanent handoff workflow committed as `616567d`. The following handoff-only
+  checkpoint records the validated implementation; its own hash cannot be written
+  into itself. Later documentation-only commits do not change the tested code;
+  consult PR #6 checks for the current head's remote run.
 - Worktree was clean at continuation. No previous DEVELOPMENT_STATUS.md existed.
-- Permanent handoff workflow committed as `616567d`. Current snapshot guard slice
-  (commit subject `Guard inconsistent vehicle snapshots before forecasting`) is
-  locally validated: **88 passed, zero skipped; 91% coverage; Ruff passed; official
-  hassfest: one integration, zero invalid**. Remote CI for this new slice is pending
-  until pushed; do not substitute the earlier green head as its CI evidence.
 
 ## Completed and validated
 
@@ -51,9 +52,10 @@ another root-level DEVELOPMENT_STATUS.md.
 
 ## In progress
 
-Snapshot guard implementation and local validation are complete. Push the coherent
-slice and check PR #6's exact head. Record its remote CI outcome in this handoff;
-then continue the first remaining task below. Do not rerun the port or initial setup.
+No unfinished code or local failing test at this checkpoint. Snapshot guard and
+handoff workflow are committed and pushed; implementation CI passed. PR #6 remains
+an unmerged draft. The next development task is registry source-reference rename
+handling below. Do not repeat the snapshot guard, port or initial setup.
 
 ## Remaining tasks, in priority order
 
@@ -80,7 +82,7 @@ then continue the first remaining task below. Do not rerun the port or initial s
 - Guest authority loses authorization after HA downtime because missed physical
   unplug cannot be disproven; stable session IDs alone do not prove continuity.
 - Report timestamps reflect HA reports, not upstream vehicle freshness. The new
-  temporal consistency guard is validated locally but is deliberately conservative;
+  temporal consistency guard is validated locally and in CI but is deliberately conservative;
   operators may need to configure its window for verified provider reporting cadence.
 - No live executor, acknowledgments, persistent production budget or real probes.
   These require separate review/owner-supervised safety validation.
@@ -113,7 +115,7 @@ See docs/validation.md for baseline evidence and docs/roadmap.md for broader sco
 ## Recommended next action
 
 Read this handoff, inspect Git/PR #6 and Issue #2, and confirm remote CI for the
-latest snapshot guard commit before new code. Next, add a failing HA registry-rename
+latest snapshot guard commit if PR #6 has changed since this checkpoint. Next, add a failing HA registry-rename
 regression test and implement stable source-reference reconciliation with ownership
 validation. Preserve provider priorities/logical UUIDs and fail closed if a device
 cannot be verified. Update this file with evidence, commit/push the coherent slice,

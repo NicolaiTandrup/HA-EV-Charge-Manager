@@ -15,8 +15,9 @@ Local checks on the implementation branch:
   failures were corrected and the real validator rerun successfully.
 - HACS's own manifest and integration JSON schemas passed inside its official
   action container. GitHub Actions Tests, hassfest and full HACS checks also
-  passed for the initial implementation (`406174e`); final guard updates run the
-  same checks on the PR. HACS validation is not catalog acceptance.
+  passed for the original guard implementation (`d41120f`) and the snapshot
+  consistency slice (`e2bd6b3`), on both push and pull-request workflows.
+  HACS validation is not catalog acceptance.
 - Real HA config entry setup, independent module combinations, source events,
   freshness watchdog, config/options flows, unload and storage exercised.
 - Official Nord Pool response service mocked at HA service boundary: DKK/MWh
