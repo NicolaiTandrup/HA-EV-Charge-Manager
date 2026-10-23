@@ -96,6 +96,8 @@ def compose_dated(slot, tariff):
         if not start <= day < end:
             continue
         if rule.get("eligibility", "all") == "heating_above_4000":
+            if not isfinite(float(tariff.get("annual_usage_kwh", 0))):
+                raise ValueError("Invalid verified annual usage")
             if (
                 not tariff.get("heating_registered")
                 or tariff.get("usage_year") != day.year

@@ -50,3 +50,19 @@ catalog inclusion or production migration is claimed. Keep Issues #1–#4 open f
 the remaining acceptance work in [roadmap.md](roadmap.md).
 
 Remote checks: [implementation PR checks](https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/6/checks).
+
+## Later continuation checkpoints
+
+- `f7a16e6`: 94 tests, including registry regressions first observed failing;
+  remote tests/hassfest/HACS passed.
+- `f488748`: 99 tests with provider management; remote checks passed.
+- `d1c66b7`: 106 tests with persistent indexed prices; remote checks passed.
+- `5c32dc9`: 114 tests with scheduled refresh; remote checks passed.
+- `b9ce79a`: 136 tests with verified Radius/dated components; push checks passed.
+- Latest pricing hardening: **137 passed, zero skipped; 91% statement coverage**;
+  Ruff/format and official local hassfest pass. Check its pushed head for remote CI.
+
+Live research contacted only public Datahub/Radius documentation and tariff assets,
+not household HA or vehicle/charger services. ADR 003 records units, identity, VAT,
+effective-date evidence and fixtures. Real household pricing parity remains unrun
+pending the owner's contract and read-only broker comparison inputs.

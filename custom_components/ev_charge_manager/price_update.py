@@ -38,7 +38,12 @@ class PriceUpdater:
         async with self.lock:
             key = site["id"]
             old = self.status.get(key, {})
-            report = {**old, "last_attempt": now.isoformat(), "status": "ERROR"}
+            report = {
+                **old,
+                "last_attempt": now.isoformat(),
+                "status": "ERROR",
+                "source_slots": None,
+            }
             self.status[key] = report
             try:
                 tariff = dict(site.get("tariff", {}))
@@ -118,6 +123,7 @@ class PriceUpdater:
                     for day in dates:
                         start, end = day_bounds(day, site["timezone"])
                         selected = [s for s in slots if start <= s.start and s.end <= end]
+                        report["source_slots"] = len(selected)
                         complete = (
                             bool(selected)
                             and selected[0].start == start

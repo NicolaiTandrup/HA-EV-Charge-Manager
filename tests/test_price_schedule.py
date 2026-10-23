@@ -108,3 +108,65 @@ async def test_incomplete_corrected_day_does_not_mix_with_old_complete_table(has
     assert not await updater.refresh(site, now, force=True, dates=[day])
     assert updater.status["home"]["status"] == "INCOMPLETE"
     assert engine.lookup("home", data[0].start, data[0].end)[0].final_price_incl_vat == -0.1
+
+
+async def test_unchanged_watchdog_does_not_replan_until_regular_tick(hass, freezer):
+    from unittest.mock import patch
+
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from .test_manager import model
+
+    freezer.move_to("2026-10-23T12:00:00+00:00")
+    config = model(hass)
+    # No selected allocation boundary before the next regular tick.
+    price_rows = []
+    cursor = datetime(2026, 10, 23, 12, tzinfo=UTC)
+    for i in range(96):
+        price_rows.append(
+            {
+                "start": cursor.isoformat(),
+                "end": (cursor + timedelta(minutes=15)).isoformat(),
+                "price": 10 if i < 4 else 1,
+            }
+        )
+        cursor += timedelta(minutes=15)
+    hass.states.async_set("sensor.prices", "1", {"slots": price_rows})
+    with patch(
+        "custom_components.ev_charge_manager.optimizer.plan_site",
+        wraps=__import__(
+            "custom_components.ev_charge_manager.planner", fromlist=["plan_site"]
+        ).plan_site,
+    ) as planner:
+        entry = MockConfigEntry(domain="ev_charge_manager", data=config)
+        entry.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        calls = planner.call_count
+        for seconds in (15, 30, 45):
+            freezer.move_to(datetime(2026, 10, 23, 12, tzinfo=UTC) + timedelta(seconds=seconds))
+            await entry.runtime_data.async_refresh()
+        assert planner.call_count == calls
+        # Refresh identical field reports so source TTL/skew isn't the trigger.
+        for field, value in {
+            "soc": "60",
+            "target": "65",
+            "cable": "on",
+            "tracker": "home",
+            "charging": "off",
+        }.items():
+            hass.states.async_set("sensor.car_" + field, value)
+        freezer.move_to("2026-10-23T12:30:00+00:00")
+        # Mark every required source fresh at the new tick.
+        for field, value in {
+            "soc": "60",
+            "target": "65",
+            "cable": "on",
+            "tracker": "home",
+            "charging": "off",
+        }.items():
+            hass.states.async_set("sensor.car_" + field, value)
+        hass.states.async_set("sensor.charger", "charging")
+        await entry.runtime_data.async_refresh()
+        assert planner.call_count > calls
+        assert await hass.config_entries.async_unload(entry.entry_id)

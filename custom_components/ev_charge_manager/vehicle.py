@@ -95,7 +95,13 @@ class VehicleRegistry:
             for p in v.get("providers", [])
             if p.get("device") == device
         }
-        if len(owners) != 1 or entity is None or entity.device_id != device or entity.disabled_by:
+        if (
+            len(owners) != 1
+            or entity is None
+            or entity.id != ref
+            or entity.device_id != device
+            or entity.disabled_by
+        ):
             return None
         return entity.entity_id
 

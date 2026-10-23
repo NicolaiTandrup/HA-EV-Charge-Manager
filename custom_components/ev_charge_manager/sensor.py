@@ -198,6 +198,21 @@ class PriceSensor(CoordinatorEntity, SensorEntity):
 
         now, records = self.records()
         current = next((r for r in records if r.start <= now < r.end), None)
+
+        def dso(record):
+            parts = json.loads(record.components_json)
+            return (
+                parts.get("components", {})
+                .get("dso", {})
+                .get("ex_vat", parts.get("ex_vat", {}).get("dso"))
+            )
+
+        current_dso = dso(current) if current else None
+        next_change = (
+            next((r.start for r in records if r.start > now and dso(r) != current_dso), None)
+            if current
+            else None
+        )
         return {
             "schema_version": 1,
             "mode": "read_only",
@@ -207,4 +222,7 @@ class PriceSensor(CoordinatorEntity, SensorEntity):
             "source": json.loads(current.source_json) if current else None,
             "slot_start": current.start.isoformat() if current else None,
             "slot_end": current.end.isoformat() if current else None,
+            "current_dso_tariff_ex_vat": current_dso,
+            "next_dso_change_at": next_change.isoformat() if next_change else None,
+            "day_validation": self.coordinator.price_schedule.days.get(self.site["id"], {}),
         }

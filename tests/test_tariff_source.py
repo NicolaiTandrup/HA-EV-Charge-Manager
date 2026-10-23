@@ -159,4 +159,7 @@ async def test_dated_dso_composition_through_native_integration(hass, freezer):
         assert record.final_price_incl_vat == pytest.approx(
             1.25 + 0.318524 * 1.25 + 0.05375 + 0.09 + 0.01 + 0.0375
         )
+        published = hass.states.get("sensor.home_prices_home_current_price")
+        assert published.attributes["current_dso_tariff_ex_vat"] == pytest.approx(0.318524)
+        assert published.attributes["next_dso_change_at"] == "2026-10-23T15:00:00+00:00"
         assert await hass.config_entries.async_unload(entry.entry_id)

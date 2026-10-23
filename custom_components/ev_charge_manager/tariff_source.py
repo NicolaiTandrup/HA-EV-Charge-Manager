@@ -36,7 +36,10 @@ def normalize_tariffs(records, gln, code, start, end):
             or row.get("ResolutionDuration") != "PT1H"
         ):
             raise ValueError("Unrecognized tariff owner/product/resolution")
-        a = datetime.fromisoformat(row["ValidFrom"]).replace(tzinfo=ZONE)
+        raw_from = datetime.fromisoformat(row["ValidFrom"])
+        if raw_from.tzinfo is not None:
+            raise ValueError("Expected documented local-naive Datahub effective date")
+        a = raw_from.replace(tzinfo=ZONE)
         b = (
             datetime.fromisoformat(row["ValidTo"]).replace(tzinfo=ZONE)
             if row.get("ValidTo")
@@ -76,6 +79,8 @@ def normalize_tariffs(records, gln, code, start, end):
         "vat_included": False,
         "version": version,
         "effective_versions": list(used),
+        "effective_ranges": [{"from": v["from"], "to": v["to"]} for v in used.values()],
+        "url": URL,
     }
 
 

@@ -133,6 +133,7 @@ class PriceEngine:
             {},
             {},
         )
+        self.price_keys = {}
         self.lock = Lock()
 
     def store(self, site):
@@ -145,6 +146,9 @@ class PriceEngine:
             PriceSlot(r.start, r.end, r.final_price_incl_vat) for r in records
         )
         self.signatures[site], self.revisions[site] = signature, revision
+        self.price_keys[site] = sha256(
+            str(tuple((r.start, r.end, r.final_price_incl_vat) for r in records)).encode()
+        ).hexdigest()
 
     async def async_load(self, sites):
         for site in sites:
