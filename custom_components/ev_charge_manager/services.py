@@ -51,6 +51,13 @@ def async_register(hass, coordinator):
             and normalize(state.state) in CONNECTED
             and 0 <= (now - state.last_reported).total_seconds() <= coordinator.registry.ttl
         )
+        snapshots = coordinator.registry.snapshot(now)
+        health = coordinator.registry.assess(snapshots)
+        vehicle_health = health.get(session.vehicle, {}) if session else {}
+        snapshot_safe = not (session and session.vehicle) or (
+            "charging_while_disconnected" not in vehicle_health.get("issues", [])
+            and (call.data["owner"] != "optimizer" or vehicle_health.get("forecast_safe", False))
+        )
         intent = Intent(
             call.data["key"],
             call.data["session_id"],
@@ -62,6 +69,7 @@ def async_register(hass, coordinator):
             intent,
             current_session=session.id if session else None,
             fresh=source_fresh
+            and snapshot_safe
             and 0 <= age <= 30
             and observed.get("session_id") == call.data["session_id"],
             authorized=bool(

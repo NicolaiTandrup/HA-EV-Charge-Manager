@@ -57,6 +57,19 @@ received a state, not that an upstream integration fetched fresh vehicle data.
 The integration never calls `update_entity`, wakes a car or requests Fleet data.
 Independent Fleet integration polling is outside its control.
 
+Forecasts also require a consistent vehicle snapshot. Configure the maximum
+report-time difference under Modules (default 120 seconds; existing entries use
+that default). Required SoC, target, cable, tracker and charging reports must fall
+within that window; power is included only while charging. Missing fields or
+charging-on/cable-off contradictions suppress the forecast with an explicit reason.
+Retained idle power and optional odometer values do not invalidate a forecast.
+Vehicle sensor attributes expose `snapshot_health`, missing fields and report skew;
+anonymous diagnostics count issue categories. Raw fields and provider precedence
+are preserved: consistency failures do not silently replace Custom with Fleet.
+This checks HA report timing, not atomic upstream vehicle data. Brain physical
+sessions remain independent; tune the window to verified source cadence.
+
+
 ## Prices and forecasts
 
 Official HA Nord Pool `get_prices_for_date` is the only external read service used.

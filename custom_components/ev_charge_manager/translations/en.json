@@ -17,12 +17,13 @@
       },
       "modules": {
         "title": "Modules and safety",
-        "description": "Independent read-only modules. Budget counts simulated requests only.",
+        "description": "Independent read-only modules. Snapshot skew compares HA report times, not upstream freshness. Budget counts simulated requests only.",
         "data": {
           "brain_enabled": "Enable Charger Brain",
           "optimizer_enabled": "Enable Charge Optimizer",
           "stale_seconds": "Maximum source age (seconds)",
-          "command_budget": "Simulation request budget"
+          "command_budget": "Simulation request budget",
+          "snapshot_skew_seconds": "Maximum forecast field report-time difference (seconds)"
         }
       },
       "vehicle": {
@@ -133,12 +134,13 @@
       },
       "modules": {
         "title": "Modules and safety",
-        "description": "Independent read-only modules. Budget counts simulated requests only.",
+        "description": "Independent read-only modules. Snapshot skew compares HA report times, not upstream freshness. Budget counts simulated requests only.",
         "data": {
           "brain_enabled": "Enable Charger Brain",
           "optimizer_enabled": "Enable Charge Optimizer",
           "stale_seconds": "Maximum source age (seconds)",
-          "command_budget": "Simulation request budget"
+          "command_budget": "Simulation request budget",
+          "snapshot_skew_seconds": "Maximum forecast field report-time difference (seconds)"
         }
       },
       "vehicle": {

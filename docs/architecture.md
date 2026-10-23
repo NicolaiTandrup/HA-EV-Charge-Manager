@@ -33,6 +33,15 @@ values fall back; no fallback network request is issued. Returned fields include
 provider, source entity and HA report timestamp. A fresh HA report may still
 contain upstream cached values; provider freshness must be verified in device trials.
 No guarantee is made that independently reported fields form one atomic snapshot.
+The forecast guard requires its selected input reports to lie within a configurable
+window (120 seconds by default), rejects missing required fields and contradictory
+charging-on/cable-off observations, and exposes machine-readable health reasons.
+Only active charging power participates; retained idle power/odometer reports do
+not. Provider precedence is unchanged. The same health gate applies to Optimizer
+simulation intents using a fresh read; Brain-only simulation does not require
+Optimizer fields. Connection contradictions block all known-car simulation intents.
+This conservative HA-side check neither proves upstream freshness nor terminates
+an established Brain physical session.
 
 Known associations qualify for simulated managed sessions automatically. Unknown
 session authorization is explicit and session-scoped; it does not assign a vehicle.

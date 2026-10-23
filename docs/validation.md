@@ -6,9 +6,9 @@ adds no Python packages. `scripts/setup-cloud.sh` was exercised twice successful
 
 Local checks on the implementation branch:
 
-- **79 passed, zero skipped/failed** using pytest, including five scenarios executing
+- **88 passed, zero skipped/failed** using pytest, including five scenarios executing
   the original Node-RED JavaScript planner rather than a rewritten oracle.
-- **90% statement coverage overall**, planner 98%, Brain 99%, session model 100%.
+- **91% statement coverage overall**, planner 98%, Brain 99%, session model 100%.
 - Ruff lint and formatting checks passed.
 - Official `ghcr.io/home-assistant/hassfest` completed with **one integration,
   zero invalid integrations**. Initial manifest ordering/service-description
@@ -24,6 +24,11 @@ Local checks on the implementation branch:
   composition exercised through the unified coordinator.
 - Per-field invalid/stale fallback, fresh-primary-off precedence, semantic discovery,
   foreign-device rejection and edit-preserved logical identity exercised.
+- Snapshot skew boundary, missing/active power, contradictory charging/cable states,
+  source priority, recovery and configurable/legacy defaults covered. Brain-only
+  simulation remains independent of missing Optimizer fields. Nine new snapshot
+  cases pass; full suite is 88 passed with zero skips. Fresh-read intent checks
+  reject unsafe Optimizer inputs before pending coordinator events complete.
 - Guest physical-session IDs, no-power persistence, restart reconciliation,
   physical-disconnect revocation and rapid disconnect/replug race covered.
 - Command idempotency, owner conflicts, stale sessions, budgets and guest gates

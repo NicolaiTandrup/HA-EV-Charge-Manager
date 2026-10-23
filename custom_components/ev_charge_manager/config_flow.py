@@ -30,6 +30,7 @@ def defaults():
         "brain_enabled": True,
         "optimizer_enabled": True,
         "stale_seconds": 900,
+        "snapshot_skew_seconds": 120,
         "command_budget": 100,
     }
 
@@ -135,6 +136,10 @@ class Editor:
                     vol.Required("stale_seconds", default=self.config["stale_seconds"]): vol.All(
                         vol.Coerce(int), vol.Range(min=30, max=86400)
                     ),
+                    vol.Required(
+                        "snapshot_skew_seconds",
+                        default=self.config.get("snapshot_skew_seconds", 120),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=86400)),
                     vol.Required("command_budget", default=self.config["command_budget"]): vol.All(
                         vol.Coerce(int), vol.Range(min=0, max=10000)
                     ),

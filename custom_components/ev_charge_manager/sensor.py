@@ -94,6 +94,7 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
         if self.kind == "vehicle_state":
             attrs.update(
                 vehicle_id=self.vehicle,
+                snapshot_health=data["vehicle_health"].get(self.vehicle),
                 fields={
                     field: {
                         "value": value.value,

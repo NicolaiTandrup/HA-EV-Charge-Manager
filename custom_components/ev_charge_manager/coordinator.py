@@ -34,6 +34,7 @@ class SiteOptimizer(OptimizerCoordinator):
         self.history_store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.{site['id']}.history")
         self.price_slots = None
         self.readings = {}
+        self.snapshot_health = {}
 
     def _state(self, entity_id, now):
         if entity_id == "internal.prices":
@@ -49,6 +50,9 @@ class SiteOptimizer(OptimizerCoordinator):
             )
         if entity_id.startswith("internal."):
             _, key, field = entity_id.split(".")
+            health = self.snapshot_health.get(key, {})
+            if health.get("issues"):
+                raise ValueError("Vehicle snapshot inconsistent: " + ", ".join(health["issues"]))
             value = self.readings.get(key, {}).get(field)
             if value is None:
                 raise ValueError(f"Missing fresh {field}")
@@ -57,6 +61,7 @@ class SiteOptimizer(OptimizerCoordinator):
 
     def prepare(self, readings):
         self.readings = readings
+        self.snapshot_health = self.registry.assess(readings)
         self.config["vehicles"] = [
             {
                 "key": v["id"],
@@ -84,7 +89,10 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.config = {**entry.data, **entry.options}
         self.registry = VehicleRegistry(
-            hass, self.config.get("vehicles", []), self.config.get("stale_seconds", 900)
+            hass,
+            self.config.get("vehicles", []),
+            self.config.get("stale_seconds", 900),
+            self.config.get("snapshot_skew_seconds", 120),
         )
         self.commands = CommandManager(self.config.get("command_budget", 100))
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.sessions")
@@ -264,6 +272,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.store.async_delay_save(lambda: saved, 1)
         return {
             "vehicles": snapshots,
+            "vehicle_health": self.registry.assess(snapshots),
             "assignments": rows,
             "sessions": session_rows,
             "forecasts": forecasts,

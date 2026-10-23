@@ -13,8 +13,9 @@ state, measured guest-budget subtraction, diagnostics, tests and CI metadata.
 Next work before calling the product complete:
 
 - Brand capability adapters validated against actual Tesla Custom/Fleet registry
-  metadata and other vehicle/charger integrations; stronger upstream freshness and
-  cross-field snapshot reconciliation; registry replacement/rename handling.
+  metadata and other vehicle/charger integrations; verified upstream freshness,
+  richer provider disagreement diagnostics and registry replacement/rename handling.
+  Basic report-skew/connection-consistency reconciliation is implemented and tested.
 - Provider device replacement/reordering UX and entity registry rename handling.
   Current UI edits vehicle/site/charger settings and linked provider fields in place.
 - Native measured energy/cost/distance entities and optional odometer mapping using

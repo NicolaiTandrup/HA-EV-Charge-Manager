@@ -5,6 +5,7 @@ Provider order is configured per logical vehicle, independent of vehicle names.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from math import isfinite
 
 from homeassistant.helpers import entity_registry as er
@@ -40,13 +41,51 @@ class FieldValue:
     value: str
     entity_id: str
     provider: str
-    reported_at: object
+    reported_at: datetime
     attributes: dict
 
 
+def snapshot_health(fields, max_skew_seconds=120):
+    """Check the fields used together by the planner without changing priority.
+
+    Report-time agreement is only a conservative HA-side check, never proof of
+    an atomic upstream snapshot. Idle power and odometer reports are excluded:
+    providers often retain the last charging power while the car is stopped.
+    """
+    required = {"soc", "target", "cable", "tracker", "charging"}
+    charging = fields.get("charging")
+    if charging and charging.value == "on":
+        required.add("power")
+    missing = sorted(field for field in required if fields.get(field) is None)
+    reports = [fields[field].reported_at for field in required if fields.get(field)]
+    skew = (max(reports) - min(reports)).total_seconds() if reports else None
+    issues = []
+    if missing:
+        issues.append("missing_required_fields")
+    cable = fields.get("cable")
+    if charging and charging.value == "on" and cable and cable.value == "off":
+        issues.append("charging_while_disconnected")
+    if skew is not None and skew > max_skew_seconds:
+        issues.append("report_time_skew")
+    return {
+        "forecast_safe": not issues,
+        "issues": issues,
+        "missing_fields": missing,
+        "report_skew_seconds": skew,
+        "max_report_skew_seconds": max_skew_seconds,
+    }
+
+
 class VehicleRegistry:
-    def __init__(self, hass, vehicles, ttl=900):
+    def __init__(self, hass, vehicles, ttl=900, snapshot_skew_seconds=120):
         self.hass, self.vehicles, self.ttl = hass, vehicles, ttl
+        self.snapshot_skew_seconds = snapshot_skew_seconds
+
+    def assess(self, snapshots):
+        return {
+            key: snapshot_health(fields, self.snapshot_skew_seconds)
+            for key, fields in snapshots.items()
+        }
 
     def resolve(self, vehicle, field, now):
         """A valid fresh primary off/zero wins over fallback on/nonzero."""
