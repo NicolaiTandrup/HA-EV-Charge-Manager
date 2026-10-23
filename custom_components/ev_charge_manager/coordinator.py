@@ -38,6 +38,34 @@ class SiteOptimizer(OptimizerCoordinator):
         self.price_slots = ()
         self.readings = {}
         self.snapshot_health = {}
+        self.plan_key = None
+        self.cached_plan = {}
+        self.planned_at = None
+        self.price_key = None
+
+    def _plan(self, vehicles, slots, now, **kwargs):
+        # Regular 30-minute cadence, with immediate input/price/safety-boundary
+        # invalidation. History sampling/freshness checks still run every watchdog.
+        key = (
+            tuple(vehicles),
+            self.price_key,
+            int(now.timestamp() // 1800),
+            tuple((k, v) for k, v in kwargs.items() if k != "states"),
+        )
+        crossed = False
+        if self.planned_at:
+            points = [
+                point
+                for forecast in self.cached_plan.values()
+                for allocation in forecast.allocations
+                for point in (allocation.start, allocation.end)
+            ]
+            points += [r.deadline for r in kwargs.get("states", {}).values() if r.deadline]
+            crossed = any(self.planned_at < point <= now for point in points)
+        if key != self.plan_key or crossed:
+            self.cached_plan = super()._plan(vehicles, slots, now, **kwargs)
+            self.plan_key, self.planned_at = key, now
+        return dict(self.cached_plan)
 
     def _prices(self, now):
         return self.price_slots
@@ -140,6 +168,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
     async def async_load(self):
         self.persist_sources()
         await self.price_engine.async_load(self.sites)
+        await self.price_updater.tariffs.load()
         await self.price_schedule.startup()
         self.sessions = Sessions(await self.store.async_load())
         for site in self.sites.values():
@@ -182,7 +211,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
     def _registry_changed(self, event):
         if self.registry.reconcile():
             self.persist_sources()
-        self.hass.async_create_task(self.async_request_refresh())
+        self.entry.async_create_task(
+            self.hass, self.async_request_refresh(), "Refresh managed snapshots"
+        )
 
     @callback
     def _changed(self, event):
@@ -196,7 +227,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
         }:
             source = er.async_get(self.hass).async_get(event.data["entity_id"])
             if source is None or source.platform != DOMAIN:
-                self.hass.async_create_task(self._price_changed())
+                self.entry.async_create_task(
+                    self.hass, self._price_changed(), "Update price sources"
+                )
             return
         # Capture unplug edges even when a rapid replug coalesces refresh requests.
         state = event.data.get("new_state")
@@ -208,7 +241,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
                     session.last_car = session.car or session.last_car
                     session.car = None
                     session.manual = False
-        self.hass.async_create_task(self.async_request_refresh())
+        self.entry.async_create_task(
+            self.hass, self.async_request_refresh(), "Refresh managed snapshots"
+        )
 
     async def _async_update_data(self):
         now = dt_util.utcnow()
@@ -303,6 +338,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
                     site.config["grid_kw"] = max(0, site.site["grid_kw"] - power)
             except ValueError, TypeError, KeyError:
                 site.config["grid_kw"] = 0
+            site.price_key = self.price_engine.price_keys.get(key)
             site.price_slots = self.price_engine.slots(
                 key, now - timedelta(minutes=3), now + timedelta(days=3)
             )

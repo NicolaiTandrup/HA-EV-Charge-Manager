@@ -1,13 +1,17 @@
 """Civil-time publication refresh, conditional retries and restart recovery."""
 
+import logging
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
+from homeassistant.core import callback
 from homeassistant.helpers.event import async_track_point_in_utc_time
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .price_engine import day_bounds
+
+LOGGER = logging.getLogger(__name__)
 
 TIMES = ((0, 1), (13, 5), (13, 20), (13, 40), (23, 59))
 ZONE = ZoneInfo("Europe/Copenhagen")
@@ -45,12 +49,18 @@ class PriceSchedule:
             if report["status"] in {"ERROR", "STALE"}
             else "INCOMPLETE"
         )
+        previous = self.days.get(key, {}).get(str(day), {})
+        if day == now.astimezone(ZONE).date() and state != "READY":
+            LOGGER.warning("Current-day price table not verified: %s", state)
         self.days.setdefault(key, {})[str(day)] = {
             "status": state,
             "requested_date": str(day),
             "last_attempt": now.isoformat(),
-            "last_success": report.get("last_success"),
-            "valid_slots": len(rows),
+            "last_success": now.isoformat() if state == "READY" else previous.get("last_success"),
+            "valid_slots": report["source_slots"]
+            if report.get("source_slots") is not None
+            else (len(rows) if report.get("status") not in {"ERROR", "STALE"} else 0),
+            "stored_slots": len(rows),
             "expected_slots": int((end - start).total_seconds() / 900),
             "reason": report.get("reason"),
         }
@@ -108,11 +118,17 @@ class PriceSchedule:
                     choices.append(candidate)
         target = min(choices)
 
-        async def fire(_):
+        async def run_and_arm():
             try:
                 await self.run(dt_util.utcnow(), target.hour, target.minute)
             finally:
                 if self.active:
                     self._arm()
+
+        @callback
+        def fire(_):
+            self.coordinator.entry.async_create_task(
+                self.hass, run_and_arm(), "Refresh price publication"
+            )
 
         self.cancel = async_track_point_in_utc_time(self.hass, fire, target)

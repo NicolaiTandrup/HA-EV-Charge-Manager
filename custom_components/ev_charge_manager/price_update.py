@@ -7,14 +7,17 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
 from .adapters import parse_prices
+from .price_components import danish_public_components
 from .price_engine import day_bounds
 from .prices import OfficialPrices
+from .tariff_source import TariffSource
 
 
 class PriceUpdater:
     def __init__(self, hass, engine):
         self.hass, self.engine = hass, engine
         self.official = OfficialPrices(hass)
+        self.tariffs = TariffSource(hass, engine.entry_id)
         self.status = {}
         self.lock = Lock()
 
@@ -35,7 +38,12 @@ class PriceUpdater:
         async with self.lock:
             key = site["id"]
             old = self.status.get(key, {})
-            report = {**old, "last_attempt": now.isoformat(), "status": "ERROR"}
+            report = {
+                **old,
+                "last_attempt": now.isoformat(),
+                "status": "ERROR",
+                "source_slots": None,
+            }
             self.status[key] = report
             try:
                 tariff = dict(site.get("tariff", {}))
@@ -79,10 +87,43 @@ class PriceUpdater:
                     source["verified_at"] = min(times).isoformat() if times else now.isoformat()
                 else:
                     source["verified_at"] = state.last_reported.isoformat()
+                if site.get("dso_mode", "manual") != "manual" and slots:
+                    if (
+                        tariff.get("mode") not in {"spot_ex_vat", "spot_incl_vat"}
+                        or tariff.get("grid", 0)
+                        or site.get("grid_tariff_entity")
+                    ):
+                        raise ValueError(
+                            "Automatic DSO requires spot basis without duplicate grid additions"
+                        )
+                    try:
+                        tariff["grid_slots"], source["dso"] = await self.tariffs.get(
+                            site, slots[0].start, slots[-1].end, now
+                        )
+                    except ValueError:
+                        if "dso_manual_fallback" not in site:
+                            raise
+                        tariff["grid"] = site["dso_manual_fallback"]
+                        source["dso"] = {
+                            "provider": "manual_fallback",
+                            "warning": "Automatic tariff unavailable",
+                            "unit": "DKK/kWh ex VAT",
+                        }
+                if site.get("dated_components") is not None:
+                    tariff["components"] = list(site["dated_components"])
+                    if site.get("danish_public_rates"):
+                        tariff["components"] = danish_public_components() + tariff["components"]
+                    tariff.update(
+                        timezone=site["timezone"],
+                        heating_registered=site.get("heating_registered", False),
+                        annual_usage_kwh=site.get("annual_usage_kwh", 0),
+                        usage_year=site.get("usage_year"),
+                    )
                 if dates and site.get("nordpool_entry"):
                     for day in dates:
                         start, end = day_bounds(day, site["timezone"])
                         selected = [s for s in slots if start <= s.start and s.end <= end]
+                        report["source_slots"] = len(selected)
                         complete = (
                             bool(selected)
                             and selected[0].start == start
@@ -111,6 +152,8 @@ class PriceUpdater:
                         status="STALE",
                         reason="Nord Pool refresh failed; retained verified intervals",
                     )
+                if source.get("dso", {}).get("warning"):
+                    report.update(status="STALE", reason=source["dso"]["warning"])
                 return changed
             except (
                 ValueError,

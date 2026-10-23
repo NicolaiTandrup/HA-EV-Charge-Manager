@@ -73,7 +73,8 @@ sessions remain independent; tune the window to verified source cadence.
 
 ## Prices and forecasts
 
-Official HA Nord Pool `get_prices_for_date` is the only external read service used.
+Official HA Nord Pool `get_prices_for_date` supplies spot data. Optional Radius C
+uses the verified public DatahubPricelist tariff API; it never calls a vehicle API.
 It fetches today/tomorrow for DK1/DK2 in DKK, caches hourly, converts DKK/MWh to
 DKK/kWh and expands hourly data into quarters. Missing tomorrow yields provisional
 forecasts rather than fabricated prices. UTC timestamps handle DST days.
@@ -144,5 +145,7 @@ Prices are now precomputed in a per-site HA Store table (default retention 365 d
 Source updates/startup calculate; optimizer and dashboard reads only look up stored
 final DKK/kWh. Already-started prices retain their accounting provenance; verified
 corrections replace future records. Unknown slots remain unavailable. See
-[ADR 002](docs/adr-002-persistent-price-engine.md). Scheduled publication refresh is
-the next implementation slice; no production price-source switch is performed.
+[ADR 002](docs/adr-002-persistent-price-engine.md). Scheduled publication/retry/midnight refresh is implemented; no production
+price-source switch is performed. See [refresh policy](docs/price-refresh.md),
+[verified source ADR](docs/adr-003-verified-danish-sources.md) and
+[dated pricing configuration](docs/dated-pricing.md).

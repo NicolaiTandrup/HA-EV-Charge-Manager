@@ -103,6 +103,9 @@ class OptimizerCoordinator(DataUpdateCoordinator):
             raise ValueError("Unrecognized binary state")
         return value in ("on", "charging", "connected")
 
+    def _plan(self, *args, **kwargs):
+        return plan_site(*args, **kwargs)
+
     def _prices(self, now):
         state = self._state(self.config["price_entity"], now)
         return all_in(
@@ -169,7 +172,7 @@ class OptimizerCoordinator(DataUpdateCoordinator):
             slots = self._prices(now)
         except (ValueError, TypeError, KeyError, OverflowError) as err:
             slots, price_error = [], str(err)
-        result = plan_site(
+        result = self._plan(
             vehicles,
             slots,
             now,

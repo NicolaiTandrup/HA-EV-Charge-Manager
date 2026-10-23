@@ -3,7 +3,8 @@
 The price engine's own timer uses Europe/Copenhagen civil time, independent of
 HA's global timezone. It schedules the next absolute UTC trigger and rearms after
 completion; daylight-saving days use local midnight boundaries, not 24 UTC hours.
-Entry unload cancels timers, including a refresh already finishing during unload.
+Entry unload cancels future timers and waits for entry-managed refresh work;
+a finishing refresh cannot leave a new timer behind.
 
 | Local time | Requested day | Rule |
 | --- | --- | --- |
@@ -25,8 +26,10 @@ retries. Missing data is never zero-cost power.
 
 Only a changed final future table requests a scheduler-triggered replan. Unchanged
 00:01 verification causes no price writes. The existing vehicle/session freshness
-watchdog remains independent and cannot issue physical commands; safety/freshness
-changes may still reevaluate its forecasts. This read-only preview never stops an
+watchdog remains independent and cannot issue physical commands. Unchanged reads
+reuse the plan until the next regular 30-minute tick; input/price changes, selected
+allocation boundaries or hard deadlines invalidate it sooner. Actual history
+sampling and freshness checks continue independently on watchdog updates. This read-only preview never stops an
 active vehicle when publication fails; the original production Node-RED controller
 remains responsible for actual charging. Native forecast/status entities show
 missing/stale inputs and conditional planning assumptions.

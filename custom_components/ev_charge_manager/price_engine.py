@@ -12,7 +12,20 @@ from zoneinfo import ZoneInfo
 from homeassistant.helpers.storage import Store
 
 from .planner import PriceSlot, utc
+from .price_components import compose_dated
 from .prices import all_in
+
+
+def source_identity(value):
+    if isinstance(value, dict):
+        return {
+            k: source_identity(v)
+            for k, v in value.items()
+            if k not in {"verified_at", "fetched_at", "warning"}
+        }
+    if isinstance(value, list):
+        return [source_identity(v) for v in value]
+    return value
 
 
 def day_bounds(day: date, timezone="Europe/Copenhagen"):
@@ -39,10 +52,13 @@ class PriceRecord:
 
 def calculate(site_id, slots, tariff, source, now, revision):
     """Update-time composition; store explicit component/VAT conventions."""
-    priced = all_in(slots, tariff)
+    priced = all_in(slots, tariff) if "components" not in tariff else slots
     result = []
     for raw, final in zip(slots, priced, strict=True):
-        if tariff.get("mode", "all_in") == "all_in":
+        if "components" in tariff:
+            final_value, components = compose_dated(raw, tariff)
+            final = PriceSlot(raw.start, raw.end, final_value)
+        elif tariff.get("mode", "all_in") == "all_in":
             components = {"external_all_in": raw.price, "amounts_include_vat": True}
         else:
             grid = sum(
@@ -51,7 +67,9 @@ def calculate(site_id, slots, tariff, source, now, revision):
                 if g.start <= raw.start and g.end >= raw.end
             )
             ex = {
-                "spot": raw.price,
+                "spot": raw.price / (1 + tariff.get("vat", 0))
+                if tariff.get("mode") == "spot_incl_vat"
+                else raw.price,
                 "dso": tariff.get("grid", 0) + grid,
                 "tax": tariff.get("tax", 0),
                 "supplier": tariff.get("supplier", 0),
@@ -115,6 +133,7 @@ class PriceEngine:
             {},
             {},
         )
+        self.price_keys = {}
         self.lock = Lock()
 
     def store(self, site):
@@ -127,6 +146,9 @@ class PriceEngine:
             PriceSlot(r.start, r.end, r.final_price_incl_vat) for r in records
         )
         self.signatures[site], self.revisions[site] = signature, revision
+        self.price_keys[site] = sha256(
+            str(tuple((r.start, r.end, r.final_price_incl_vat) for r in records)).encode()
+        ).hexdigest()
 
     async def async_load(self, sites):
         for site in sites:
@@ -150,7 +172,7 @@ class PriceEngine:
         payload = {
             "slots": [asdict(s) for s in slots],
             "tariff": tariff,
-            "source": {k: v for k, v in source.items() if k != "verified_at"},
+            "source": source_identity(source),
         }
         signature = sha256(json.dumps(payload, default=str, sort_keys=True).encode()).hexdigest()
         async with self.lock:
@@ -167,16 +189,8 @@ class PriceEngine:
                     or (
                         prior.final_price_incl_vat == record.final_price_incl_vat
                         and prior.components_json == record.components_json
-                        and {
-                            k: v
-                            for k, v in json.loads(prior.source_json).items()
-                            if k != "verified_at"
-                        }
-                        == {
-                            k: v
-                            for k, v in json.loads(record.source_json).items()
-                            if k != "verified_at"
-                        }
+                        and source_identity(json.loads(prior.source_json))
+                        == source_identity(json.loads(record.source_json))
                     )
                 ):
                     continue
