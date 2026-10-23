@@ -12,6 +12,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     c = entry.runtime_data
     entities = [ManagerSensor(c, "assignments"), ManagerSensor(c, "status")]
     entities.extend(ManagerSensor(c, "vehicle_state", vehicle=v["id"]) for v in c.registry.vehicles)
+    entities.extend(
+        PriceSensor(c, site.site, kind)
+        for site in c.sites.values()
+        for kind in ("current_price", "next_price", "price_status")
+    )
     for site in c.sites:
         for vehicle in c.registry.vehicles:
             for kind in (
@@ -141,3 +146,65 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
                 ],
             )
         return attrs
+
+
+class PriceSensor(CoordinatorEntity, SensorEntity):
+    """Read only persisted records; publishing a state never fetches/calculates."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, coordinator, site, kind):
+        super().__init__(coordinator)
+        self.site, self.kind = site, kind
+        self._attr_name = f"{site['name']} {kind.replace('_', ' ')}"
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_{site['id']}_{kind}"
+        if kind != "price_status":
+            self._attr_native_unit_of_measurement = "DKK/kWh"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, coordinator.entry.entry_id + "_prices_" + site["id"])},
+            "name": site["name"] + " prices",
+            "manufacturer": "EV Charge Manager",
+            "model": "Persistent all-in price table",
+        }
+
+    def records(self):
+        from datetime import timedelta
+
+        from homeassistant.util import dt as dt_util
+
+        now = dt_util.utcnow()
+        return now, self.coordinator.price_engine.lookup(
+            self.site["id"], now, now + timedelta(days=2)
+        )
+
+    @property
+    def native_value(self):
+        if self.kind == "price_status":
+            return self.coordinator.price_updater.status.get(self.site["id"], {}).get(
+                "status", "INCOMPLETE"
+            )
+        now, records = self.records()
+        matches = [
+            r
+            for r in records
+            if (r.start <= now < r.end if self.kind == "current_price" else r.start > now)
+        ]
+        return matches[0].final_price_incl_vat if matches else None
+
+    @property
+    def extra_state_attributes(self):
+        import json
+
+        now, records = self.records()
+        current = next((r for r in records if r.start <= now < r.end), None)
+        return {
+            "schema_version": 1,
+            "mode": "read_only",
+            **self.coordinator.price_updater.status.get(self.site["id"], {}),
+            "revision": self.coordinator.price_engine.revisions.get(self.site["id"], 0),
+            "components": json.loads(current.components_json) if current else None,
+            "source": json.loads(current.source_json) if current else None,
+            "slot_start": current.start.isoformat() if current else None,
+            "slot_end": current.end.isoformat() if current else None,
+        }

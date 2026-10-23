@@ -4,7 +4,7 @@ Updated 2026-10-23. Canonical continuation file; read AGENTS.md first.
 
 ## Active state
 
-Branch `feat/unified-read-only-integration`, draft PR #6 stacked on architecture
+Base implementation branch `feat/unified-read-only-integration`, draft PR #6 stacked on architecture
 PR #5. Baseline owner checkpoint was `4051ec0`; do not recreate completed work.
 Current issues: #2 provider identity/management; next #9 persistent prices, #10
 scheduled refresh, then #7 verified DSO and #8 dated components.
@@ -21,16 +21,30 @@ scheduled refresh, then #7 verified DSO and #8 dated components.
   reorder/promote/remove and explicitly remap replacement devices; preserves vehicle
   UUID, provider ID and priority when editing fields. Five UI cases and full
   **99 tests pass, zero skipped**; Ruff and official local hassfest passed.
-  Remote CI must be checked after pushing this checkpoint.
+  Remote push/PR tests, hassfest and HACS passed at `f488748`.
 
 ## Current work / precise next step
 
-Provider management is locally validated; push/check CI. Continue #9 by adding a
-persistent per-site price table with atomic writes, immutable historic final prices,
-source/component provenance, no-op unchanged updates, DST-complete day validation
-and indexed lookup-only reads. Integrate consumers before scheduled refresh #10.
-Then investigate actual structured Radius C source availability (#7) before writing
-its adapter; no guessed identities/fees. #8 supplier markup is contract-specific.
+Active branch: `feat/persistent-price-engine`, stacked on PR #6 at `f488748`.
+Checkpoint `Persist precomputed per-site prices and make consumers lookup-only`:
+**106 tests passed, zero skipped**, Ruff/format and local official hassfest passed.
+Store/restart, 92/96/100-slot DST days, immutable historical prices, atomic failed
+writes, concurrent/no-op verification updates and lookup-only optimizer consumers
+are covered. Open/check a separate pricing draft PR after pushing this checkpoint.
+
+Engine uses per-site HA Store (ADR 002), immutable records/indexed reads, 365-day
+retention, source/component/VAT audit conventions and future-only corrections.
+Source updates/startup compose and persist; consumer refreshes never fetch/compose.
+Native current/next/status price sensors read durable data. Configured entity sources
+must provide quarter-aligned timestamps. Existing partial price feeds stay partial;
+no invented zero slots. External all-in mode does not reverse-engineer components.
+
+Next: #10 scheduled publication refresh/startup checks using persisted completeness.
+Then #7: live API now VERIFIED Radius owner GLN 5790000705689, D03 product DT_C_01,
+Note Nettarif C, PT1H, VATClass D02. Nine actual product rows returned (2026 seasonal
+rows present). Verify documented units/VAT/date semantics before shipping adapter.
+Public API/domain access works after additive network draft settings; no secret.
+#8 supplier rates remain contract-specific; no default inferred from advertising.
 
 ## Remaining priorities and limitations
 

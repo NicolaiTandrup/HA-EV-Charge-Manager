@@ -39,6 +39,7 @@ def register_provider(hass, fields, label="custom"):
 
 def model(hass, brain=True, optimizer=True):
     now = dt_util.utcnow()
+    now = now.replace(minute=(now.minute // 15) * 15, second=0, microsecond=0)
     values = {
         "soc": "60",
         "target": "65",
@@ -534,7 +535,7 @@ async def test_shared_provider_ui_attaches_fields_and_rejects_foreign_device(has
 
 
 async def test_official_price_source_runs_through_unified_coordinator(hass):
-    now = dt_util.utcnow()
+    now = dt_util.utcnow().replace(minute=0, second=0, microsecond=0)
     config = model(hass)
     site = config["sites"][0]
     site.pop("price_entity")
