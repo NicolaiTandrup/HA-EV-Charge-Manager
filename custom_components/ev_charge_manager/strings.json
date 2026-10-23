@@ -12,7 +12,8 @@
           "charger": "Add charger",
           "remove": "Remove item",
           "finish": "Save",
-          "edit": "Edit item or provider fields"
+          "edit": "Edit item or provider fields",
+          "manage_provider": "Manage provider priority or device"
         }
       },
       "modules": {
@@ -106,6 +107,27 @@
         "data": {
           "item": "Item"
         }
+      },
+      "manage_provider": {
+        "title": "Manage provider",
+        "description": "Changes affect this logical vehicle only; its identity remains unchanged.",
+        "data": {
+          "provider": "Provider"
+        }
+      },
+      "provider_action": {
+        "title": "Provider action",
+        "description": "Primary/up/down change read priority. Removal fails closed for missing fields. Replacement requires a new device and reviewed field mappings.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "provider_device": {
+        "title": "Replace provider device",
+        "description": "Select the replacement device, then review its fields. Existing vehicle identity and provider position are retained.",
+        "data": {
+          "device": "Replacement device"
+        }
       }
     },
     "error": {
@@ -114,7 +136,8 @@
     },
     "abort": {
       "already_configured": "Already configured. Use Configure to change options.",
-      "no_vehicles": "Add a logical vehicle first."
+      "no_vehicles": "Add a logical vehicle first.",
+      "no_providers": "Attach a provider first."
     }
   },
   "options": {
@@ -129,7 +152,8 @@
           "charger": "Add charger",
           "remove": "Remove item",
           "finish": "Save",
-          "edit": "Edit item or provider fields"
+          "edit": "Edit item or provider fields",
+          "manage_provider": "Manage provider priority or device"
         }
       },
       "modules": {
@@ -222,6 +246,27 @@
         "description": "Vehicle identity is preserved. IDs are stable; editing provider fields retains device association.",
         "data": {
           "item": "Item"
+        }
+      },
+      "manage_provider": {
+        "title": "Manage provider",
+        "description": "Changes affect this logical vehicle only; its identity remains unchanged.",
+        "data": {
+          "provider": "Provider"
+        }
+      },
+      "provider_action": {
+        "title": "Provider action",
+        "description": "Primary/up/down change read priority. Removal fails closed for missing fields. Replacement requires a new device and reviewed field mappings.",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "provider_device": {
+        "title": "Replace provider device",
+        "description": "Select the replacement device, then review its fields. Existing vehicle identity and provider position are retained.",
+        "data": {
+          "device": "Replacement device"
         }
       }
     },

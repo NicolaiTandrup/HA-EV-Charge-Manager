@@ -45,6 +45,7 @@ class Editor:
                 "modules",
                 "vehicle",
                 "provider",
+                "manage_provider",
                 "site",
                 "charger",
                 "edit",
@@ -108,6 +109,7 @@ class Editor:
                     "vehicle": vehicle["id"],
                     "primary": vehicle["providers"][0]["id"] == provider["id"],
                 }
+                self.provider_position = vehicle["providers"].index(provider)
                 self.suggestions = dict(provider["fields"])
                 self.editing_provider = True
                 return await self.async_step_fields()
@@ -189,6 +191,69 @@ class Editor:
             ),
         )
 
+    async def async_step_manage_provider(self, user_input=None):
+        choices = {
+            f"{v['id']}:{p['id']}": v["name"] + " / " + p["id"]
+            for v in self.config["vehicles"]
+            for p in v["providers"]
+        }
+        if not choices:
+            return self.async_abort(reason="no_providers")
+        if user_input:
+            vehicle_id, provider_id = user_input["provider"].split(":", 1)
+            self.managed_vehicle = next(v for v in self.config["vehicles"] if v["id"] == vehicle_id)
+            self.managed_provider = next(
+                p for p in self.managed_vehicle["providers"] if p["id"] == provider_id
+            )
+            return await self.async_step_provider_action()
+        return self.async_show_form(
+            step_id="manage_provider",
+            data_schema=vol.Schema({vol.Required("provider"): vol.In(choices)}),
+        )
+
+    async def async_step_provider_action(self, user_input=None):
+        if user_input:
+            providers = self.managed_vehicle["providers"]
+            position = providers.index(self.managed_provider)
+            action = user_input["action"]
+            if action == "replace":
+                return await self.async_step_provider_device()
+            providers.pop(position)
+            if action != "remove":
+                target = (
+                    0
+                    if action == "primary"
+                    else max(0, position - 1)
+                    if action == "up"
+                    else min(len(providers), position + 1)
+                )
+                providers.insert(target, self.managed_provider)
+            return await self.async_step_menu()
+        return self.async_show_form(
+            step_id="provider_action",
+            data_schema=vol.Schema(
+                {vol.Required("action"): vol.In(["primary", "up", "down", "remove", "replace"])}
+            ),
+        )
+
+    async def async_step_provider_device(self, user_input=None):
+        if user_input:
+            old = self.managed_provider
+            self.provider_position = self.managed_vehicle["providers"].index(old)
+            self.provider = {
+                "vehicle": self.managed_vehicle["id"],
+                "id": old["id"],
+                "device": user_input["device"],
+                "primary": self.provider_position == 0,
+            }
+            self.editing_provider = True
+            self.suggestions = discover(self.hass, user_input["device"])
+            return await self.async_step_fields()
+        return self.async_show_form(
+            step_id="provider_device",
+            data_schema=vol.Schema({vol.Required("device"): selector.DeviceSelector()}),
+        )
+
     async def async_step_fields(self, user_input=None):
         errors = {}
         if user_input:
@@ -231,7 +296,12 @@ class Editor:
                             p for p in vehicle["providers"] if p["id"] != self.provider["id"]
                         ]
                     vehicle["providers"].insert(
-                        0 if self.provider["primary"] else len(vehicle["providers"]), provider
+                        0
+                        if self.provider["primary"]
+                        else getattr(self, "provider_position", len(vehicle["providers"]))
+                        if getattr(self, "editing_provider", False)
+                        else len(vehicle["providers"]),
+                        provider,
                     )
                     return await self.async_step_menu()
         return self._show_item(
