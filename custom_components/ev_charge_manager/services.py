@@ -13,6 +13,8 @@ from .simulation import simulate_probe
 
 def async_register(hass, coordinator):
     async def authorize(call):
+        # Reconcile pending source events before deciding that a session is unknown.
+        await coordinator.async_refresh()
         charger = next(
             (c for c in coordinator.config.get("chargers", []) if c["id"] == call.data["charger"]),
             None,

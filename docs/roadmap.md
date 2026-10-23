@@ -27,7 +27,7 @@ Next work before calling the product complete:
   automatic physical probes need separate reviewed work and owner-supervised tests.
 - Broader parity fixtures for every Cheap Boost transition, guest/restart race,
   source mismatch and load-sharing scenario; real HA OS/Raspberry Pi observation.
-- Full remote HACS validation and repository metadata checks once API networking is
-  available. A local schema pass is not HACS catalog acceptance.
+- HACS catalog inclusion and owner-approved distribution. The official remote
+  HACS action passes; it is not a catalog acceptance or a release approval.
 
 No stable release, merge, deployment or production switch-over is part of this PR.

@@ -546,3 +546,48 @@ async def test_official_price_source_runs_through_unified_coordinator(hass):
     await entry.runtime_data.async_refresh()
     assert count == 2
     assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_unknown_guest_demand_is_not_assumed_zero(hass):
+    config = model(hass)
+    config["chargers"].append(
+        {"id": "guest", "name": "Guest", "status": "sensor.guest_status", "zone_state": "home"}
+    )
+    hass.states.async_set("sensor.guest_status", "disconnected")
+    entry = MockConfigEntry(domain="ev_charge_manager", data=config)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    c = entry.runtime_data
+    assert c.data["forecasts"]["home"]["car"].valid
+    hass.states.async_set("sensor.guest_status", "awaiting_start")
+    await c.async_refresh()
+    assert not c.data["forecasts"]["home"]["car"].valid
+    hass.states.async_set("sensor.guest_status", "unavailable")
+    await c.async_refresh()
+    assert not c.data["forecasts"]["home"]["car"].valid
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_guest_authorization_reconciles_known_vehicle_source_race(hass):
+    config = model(hass)
+    hass.states.async_set("sensor.car_cable", "off")
+    entry = MockConfigEntry(domain="ev_charge_manager", data=config)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    sid = entry.runtime_data.sessions.items["charger"].id
+    hass.states.async_set("sensor.car_cable", "on")
+    from homeassistant.exceptions import ServiceValidationError
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            "ev_charge_manager",
+            "simulate_guest_authorization",
+            {"charger": "charger", "session_id": sid},
+            blocking=True,
+            return_response=True,
+        )
+    assert entry.runtime_data.sessions.items["charger"].vehicle == "car"
+    assert not entry.runtime_data.sessions.items["charger"].authorized
+    assert await hass.config_entries.async_unload(entry.entry_id)

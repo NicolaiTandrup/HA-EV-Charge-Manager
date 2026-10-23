@@ -6,7 +6,7 @@ adds no Python packages. `scripts/setup-cloud.sh` was exercised twice successful
 
 Local checks on the implementation branch:
 
-- **77 passed, zero skipped/failed** using pytest, including five scenarios executing
+- **79 passed, zero skipped/failed** using pytest, including five scenarios executing
   the original Node-RED JavaScript planner rather than a rewritten oracle.
 - **90% statement coverage overall**, planner 98%, Brain 99%, session model 100%.
 - Ruff lint and formatting checks passed.
@@ -14,8 +14,9 @@ Local checks on the implementation branch:
   zero invalid integrations**. Initial manifest ordering/service-description
   failures were corrected and the real validator rerun successfully.
 - HACS's own manifest and integration JSON schemas passed inside its official
-  action container. Full remote HACS action and GitHub CI results are recorded
-  below once available; local schema validation is not remote catalog acceptance.
+  action container. GitHub Actions Tests, hassfest and full HACS checks also
+  passed for the initial implementation (`406174e`); final guard updates run the
+  same checks on the PR. HACS validation is not catalog acceptance.
 - Real HA config entry setup, independent module combinations, source events,
   freshness watchdog, config/options flows, unload and storage exercised.
 - Official Nord Pool response service mocked at HA service boundary: DKK/MWh
@@ -41,3 +42,5 @@ No real HA installation, Tesla, Easee, household automation or Node-RED server w
 contacted. No hardware acceptance, full behavioral parity, stable release, HACS
 catalog inclusion or production migration is claimed. Keep Issues #1–#4 open for
 the remaining acceptance work in [roadmap.md](roadmap.md).
+
+Remote checks: [implementation PR checks](https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/6/checks).

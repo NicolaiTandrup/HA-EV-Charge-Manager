@@ -77,7 +77,8 @@ Currency conversion is not inferred; sensor inputs must be DKK after scaling.
   covering every planned interval. Choose either a fixed grid value or the schedule,
   or explicitly split a fixed and variable grid component to avoid double counting.
 - Optional guest-demand sensor: measured W/kW subtracted from each site's configured
-  charging budget. Missing/invalid configured demand makes that site's plans
+  charging budget. An observed unknown or offline reserved session without a demand mapping, or
+  missing/invalid configured demand, makes that site's plans
   unavailable. Set the site budget after other household loads.
 
 Sensors expose proposed schedules, expected finish/start and expected SoC at the

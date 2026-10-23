@@ -117,6 +117,15 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             )
         elif self.forecast:
             f = self.forecast
+            site = self.coordinator.sites[self.site].site
+            attrs["price_source"] = {
+                "type": "official_nordpool" if site.get("nordpool_entry") else "entity",
+                "entity_id": site.get("price_entity"),
+                "area": site.get("area"),
+                "currency": "DKK",
+                "unit": "DKK/kWh",
+                "basis": site.get("tariff", {}).get("mode", "all_in"),
+            }
             attrs.update(
                 vehicle_id=self.vehicle,
                 site_id=self.site,

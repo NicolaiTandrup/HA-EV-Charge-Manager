@@ -217,6 +217,21 @@ class ManagerCoordinator(DataUpdateCoordinator):
             tariff = dict(site.site.get("tariff", {}))
             site.config["tariff"] = tariff
             site.config["grid_kw"] = site.site["grid_kw"]
+            uncertain_guest = any(
+                charger["zone_state"] == site.site["zone_state"]
+                and charger["id"] in self.sessions.items
+                and (
+                    self.sessions.items[charger["id"]].authorized
+                    or (
+                        self.config.get("brain_enabled", True)
+                        and not rows.get(charger["id"], {}).get("valid")
+                    )
+                )
+                for charger in self.config.get("chargers", [])
+            )
+            if uncertain_guest and not site.site.get("guest_power_entity"):
+                # Unknown consumption is not evidence of zero demand.
+                site.config["grid_kw"] = 0
             try:
                 if site.site.get("grid_tariff_entity"):
                     tariff_state = site._state(site.site["grid_tariff_entity"], now)
