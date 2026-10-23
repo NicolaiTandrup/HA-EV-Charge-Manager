@@ -15,10 +15,12 @@ Updated 2026-10-23. Canonical continuation file; read AGENTS.md first.
   checkpoint `b9ce79a` passed remote push tests/hassfest/HACS. Hardening checkpoint `afe2e88` passed local **137 tests, zero skips**, Ruff/format,
   official hassfest and all remote push/PR tests, hassfest and HACS.
 - Current checkpoint `Align tariff cache with morning publication verification`:
-  **138 passed, zero skips; 91% coverage**, Ruff/format and official local hassfest
-  passed. It prevents midnight cache reads consuming the afternoon verification
-  of morning source updates. Check its exact remote CI head after pushing.
-- Source/component draft PR #12 is open from the active branch to
+  validated at `6f972a554920ccd958ba4a77ccfa2147fd4c5b3f`: **138 passed, zero
+  skips; 91% coverage**, Ruff/format and official local hassfest passed. All SIX
+  exact-head remote push/PR checks passed: tests, hassfest and HACS. It prevents
+  midnight cache reads consuming afternoon verification of morning source updates.
+  The following handoff-only commit records these results; substantive code is unchanged.
+- Source/component draft PR #12 (https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/12) is open from the active branch to
   `feat/persistent-price-engine`. Stack: #5 → #6 → #11 → #12. All remain drafts;
   do not merge the stack.
 
@@ -72,7 +74,8 @@ running HA or Node-RED. Keep #7/#8 open until contract/source parity is verified
 
 ## Remaining priorities
 
-1. Confirm latest publication-cache checkpoint CI, then resolve owner input below.
+1. Wait for/resolve owner contract and read-only comparison inputs below.
+   All substantive implementation checkpoints have passed exact-head CI.
 2. Resolve owner EWII terms/read-only comparison fixtures; no rate speculation.
 3. Extend authoritative dated national rates only when published/verified. Current
    adapter is a bounded policy schedule, not a live legislative discovery service.
@@ -96,6 +99,7 @@ git log -6 --oneline
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
 gh pr checks 6 --repo NicolaiTandrup/HA-EV-Charge-Manager
 gh pr checks 11 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 12 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 
@@ -116,3 +120,8 @@ active PR/issue. A handoff cannot contain its own hash; use checkpoint subject a
 exact prior validated hashes. Reconstruct interruptions from Git/PR/tests before
 repeating work. Resume owner-contract validation when inputs arrive; do not rebuild
 the completed registry, persistent engine, scheduling or verified Radius adapter.
+
+Cloud networking: additive Datahub/Radius research hosts were saved to the cloud
+configuration draft, preserving GitHub/package rules. Current access works, but
+future snapshot reuse requires reviewing/saving and publishing the cloud environment
+configuration (not an integration release). No secret requirements were added.

@@ -70,4 +70,5 @@ pending the owner's contract and read-only broker comparison inputs.
 Publication-cache follow-up: **138 passed, zero skipped, 91% statement coverage**;
 Ruff/format and official local hassfest passed. The 09:00 Copenhagen publication
 bucket prevents midnight refresh from suppressing a subsequent source verification.
-`afe2e88` passed all push/PR tests, hassfest and HACS; verify the follow-up head too.
+`afe2e88` and exact follow-up head `6f972a5` both passed all push/PR tests,
+hassfest and HACS. No household parity/hardware acceptance is claimed.
