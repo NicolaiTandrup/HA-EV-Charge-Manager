@@ -103,6 +103,17 @@ class OptimizerCoordinator(DataUpdateCoordinator):
             raise ValueError("Unrecognized binary state")
         return value in ("on", "charging", "connected")
 
+    def _prices(self, now):
+        state = self._state(self.config["price_entity"], now)
+        return all_in(
+            parse_prices(
+                dict(state.attributes),
+                self.config["price_attribute"],
+                self.config.get("price_multiplier", 1),
+            ),
+            self.config.get("tariff", {}),
+        )
+
     async def _async_update_data(self):
         now = dt_util.utcnow()
         config = self.config
@@ -155,15 +166,7 @@ class OptimizerCoordinator(DataUpdateCoordinator):
                 vehicles.append(Vehicle(key, 0, 100, 1, 1, fresh=False))
         price_error = None
         try:
-            state = self._state(config["price_entity"], now)
-            slots = all_in(
-                parse_prices(
-                    dict(state.attributes),
-                    config["price_attribute"],
-                    config.get("price_multiplier", 1),
-                ),
-                config.get("tariff", {}),
-            )
+            slots = self._prices(now)
         except (ValueError, TypeError, KeyError, OverflowError) as err:
             slots, price_error = [], str(err)
         result = plan_site(

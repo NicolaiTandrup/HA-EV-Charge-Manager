@@ -12,12 +12,13 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from .adapters import parse_prices
 from .brain import DISCONNECTED, Brain, Reading, normalize
 from .command import CommandManager
 from .const import DOMAIN
 from .optimizer import OptimizerCoordinator
-from .prices import OfficialPrices
+from .price_engine import PriceEngine
+from .price_schedule import PriceSchedule
+from .price_update import PriceUpdater
 from .sessions import Sessions
 from .vehicle import VehicleRegistry
 
@@ -34,9 +35,12 @@ class SiteOptimizer(OptimizerCoordinator):
         self.config = {"currency": "DKK", "price_attribute": "slots", **site, "vehicles": []}
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.{site['id']}.rules")
         self.history_store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.{site['id']}.history")
-        self.price_slots = None
+        self.price_slots = ()
         self.readings = {}
         self.snapshot_health = {}
+
+    def _prices(self, now):
+        return self.price_slots
 
     def _state(self, entity_id, now):
         if entity_id == "internal.prices":
@@ -99,7 +103,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.commands = CommandManager(self.config.get("command_budget", 100))
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.sessions")
         self.sessions = Sessions()
-        self.prices = OfficialPrices(hass)
+        self.price_engine = PriceEngine(hass, entry.entry_id)
+        self.price_updater = PriceUpdater(hass, self.price_engine)
+        self.price_schedule = PriceSchedule(self)
         vehicles = [
             {
                 "id": v["id"],
@@ -133,9 +139,20 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     async def async_load(self):
         self.persist_sources()
+        await self.price_engine.async_load(self.sites)
+        await self.price_schedule.startup()
         self.sessions = Sessions(await self.store.async_load())
         for site in self.sites.values():
             await site.async_load()
+
+    async def async_refresh_prices(self):
+        now = dt_util.utcnow()
+        for site in self.sites.values():
+            await self.price_updater.refresh(site.site, now)
+
+    async def _price_changed(self):
+        await self.async_refresh_prices()
+        await self.async_request_refresh()
 
     async def async_save(self):
         await self.store.async_save(self.sessions.persistent())
@@ -155,6 +172,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     @callback
     def async_listen(self):
+        self.price_schedule.listen()
         self.entry.async_on_unload(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._changed))
         self.entry.async_on_unload(
             self.hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, self._registry_changed)
@@ -169,6 +187,16 @@ class ManagerCoordinator(DataUpdateCoordinator):
     @callback
     def _changed(self, event):
         if event.data["entity_id"] not in self._source_ids():
+            return
+        if event.data["entity_id"] in {
+            s[k]
+            for s in self.config.get("sites", [])
+            for k in ("price_entity", "grid_tariff_entity")
+            if s.get(k)
+        }:
+            source = er.async_get(self.hass).async_get(event.data["entity_id"])
+            if source is None or source.platform != DOMAIN:
+                self.hass.async_create_task(self._price_changed())
             return
         # Capture unplug edges even when a rapid replug coalesces refresh requests.
         state = event.data.get("new_state")
@@ -243,8 +271,6 @@ class ManagerCoordinator(DataUpdateCoordinator):
                 site.config["vehicles"] = [
                     v for v in site.config["vehicles"] if v["key"] in admitted
                 ]
-            tariff = dict(site.site.get("tariff", {}))
-            site.config["tariff"] = tariff
             site.config["grid_kw"] = site.site["grid_kw"]
             uncertain_guest = any(
                 charger["zone_state"] == site.site["zone_state"]
@@ -262,9 +288,6 @@ class ManagerCoordinator(DataUpdateCoordinator):
                 # Unknown consumption is not evidence of zero demand.
                 site.config["grid_kw"] = 0
             try:
-                if site.site.get("grid_tariff_entity"):
-                    tariff_state = site._state(site.site["grid_tariff_entity"], now)
-                    tariff["grid_slots"] = parse_prices(dict(tariff_state.attributes), "slots")
                 if site.site.get("guest_power_entity"):
                     guest = site._state(site.site["guest_power_entity"], now)
                     power = float(guest.state)
@@ -280,20 +303,16 @@ class ManagerCoordinator(DataUpdateCoordinator):
                     site.config["grid_kw"] = max(0, site.site["grid_kw"] - power)
             except ValueError, TypeError, KeyError:
                 site.config["grid_kw"] = 0
-            if site.site.get("nordpool_entry"):
-                try:
-                    site.price_slots = await self.prices.get({**site.site, "tariff": tariff}, now)
-                except ValueError, TypeError, KeyError:
-                    site.price_slots = []
-                site.config["price_entity"] = "internal.prices"
-                # Official prices already include the explicitly configured tariff.
-                site.config["tariff"] = {"mode": "all_in"}
+            site.price_slots = self.price_engine.slots(
+                key, now - timedelta(minutes=3), now + timedelta(days=3)
+            )
             forecasts[key] = await site._async_update_data()
         saved = self.sessions.persistent()
         self.store.async_delay_save(lambda: saved, 1)
         return {
             "vehicles": snapshots,
             "vehicle_health": self.registry.assess(snapshots),
+            "price_status": self.price_updater.status,
             "assignments": rows,
             "sessions": session_rows,
             "forecasts": forecasts,

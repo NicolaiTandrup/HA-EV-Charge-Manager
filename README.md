@@ -139,3 +139,10 @@ Node.js is required for the original Node-RED planner parity tests. CI includes
 Python tests, hassfest and HACS checks. See [architecture](docs/architecture.md),
 [provenance](docs/provenance.md), [validation](docs/validation.md) and
 [remaining work](docs/roadmap.md). No stable release or production cutover is made.
+
+Prices are now precomputed in a per-site HA Store table (default retention 365 days).
+Source updates/startup calculate; optimizer and dashboard reads only look up stored
+final DKK/kWh. Already-started prices retain their accounting provenance; verified
+corrections replace future records. Unknown slots remain unavailable. See
+[ADR 002](docs/adr-002-persistent-price-engine.md). Scheduled publication refresh is
+the next implementation slice; no production price-source switch is performed.

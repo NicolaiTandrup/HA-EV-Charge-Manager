@@ -44,15 +44,16 @@ class OfficialPrices:
         self.hass, self.cache = hass, {}
         self.attempts = {}
 
-    async def get(self, site, now):
+    async def get(self, site, now, *, compose=True, force=False, dates=None):
         rows = []
+        self.last_errors = []
         today = now.astimezone(ZoneInfo(site["timezone"])).date()
-        for day in (today, today + timedelta(days=1)):
+        for day in dates or (today, today + timedelta(days=1)):
             key = (site["nordpool_entry"], site.get("area", "DK2"), str(day))
             cached = self.cache.get(key)
             attempted = self.attempts.get(key)
-            if (cached is None or (now - cached[0]).total_seconds() >= 3600) and (
-                attempted is None or (now - attempted).total_seconds() >= 900
+            if (force or cached is None or (now - cached[0]).total_seconds() >= 3600) and (
+                force or attempted is None or (now - attempted).total_seconds() >= 900
             ):
                 self.attempts[key] = now
                 try:
@@ -72,6 +73,7 @@ class OfficialPrices:
                     parse_prices({"slots": data}, multiplier=0.001)
                     self.cache[key] = (now, data)
                 except HomeAssistantError, ValueError, KeyError, TypeError, TimeoutError:
+                    self.last_errors.append(str(day))
                     # Cached values expire rather than hiding a broken price source.
                     if cached is None or (now - cached[0]).total_seconds() >= 7200:
                         continue
@@ -82,4 +84,5 @@ class OfficialPrices:
         self.attempts = {
             k: v for k, v in self.attempts.items() if (now - v).total_seconds() < 172800
         }
-        return all_in(parse_prices({"slots": rows}, multiplier=0.001), site["tariff"])
+        slots = parse_prices({"slots": rows}, multiplier=0.001)
+        return all_in(slots, site["tariff"]) if compose else slots
