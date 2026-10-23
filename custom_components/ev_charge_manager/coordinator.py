@@ -140,6 +140,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
     async def async_load(self):
         self.persist_sources()
         await self.price_engine.async_load(self.sites)
+        await self.price_updater.tariffs.load()
         await self.price_schedule.startup()
         self.sessions = Sessions(await self.store.async_load())
         for site in self.sites.values():

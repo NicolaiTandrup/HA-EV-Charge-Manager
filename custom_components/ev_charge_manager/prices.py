@@ -21,7 +21,7 @@ def all_in(slots, tariff):
         if any([*parts, vat]) or tariff.get("grid_slots"):
             raise ValueError("All-in source cannot have duplicate tariff additions")
         return slots
-    if mode != "spot_ex_vat":
+    if mode not in {"spot_ex_vat", "spot_incl_vat"}:
         raise ValueError("Explicit price basis required")
     result = []
     for slot in slots:
@@ -35,7 +35,14 @@ def all_in(slots, tariff):
             grid = covering[0].price
             if grid < 0:
                 raise ValueError("Negative grid tariff")
-        result.append(replace(slot, price=(slot.price + sum(parts) + grid) * (1 + vat)))
+        result.append(
+            replace(
+                slot,
+                price=(slot.price / (1 + vat) if mode == "spot_incl_vat" else slot.price)
+                * (1 + vat)
+                + (sum(parts) + grid) * (1 + vat),
+            )
+        )
     return result
 
 

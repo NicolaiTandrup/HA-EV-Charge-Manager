@@ -80,7 +80,15 @@
           "supplier": "Supplier",
           "vat": "Vat",
           "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
-          "guest_power_entity": "Optional measured guest demand (W or kW)"
+          "guest_power_entity": "Optional measured guest demand (W or kW)",
+          "dso_mode": "Grid source (manual or verified Radius C)",
+          "dso_manual_fallback": "Optional manual fallback (DKK/kWh excluding VAT)",
+          "dso_stale_days": "Maximum verified tariff cache age (days)",
+          "dated_components": "Dated component rules (see pricing documentation)",
+          "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
+          "heating_registered": "Owner confirms registered electric heating",
+          "annual_usage_kwh": "Verified annual usage (kWh)",
+          "usage_year": "Annual usage year"
         }
       },
       "charger": {
@@ -220,7 +228,15 @@
           "supplier": "Supplier",
           "vat": "Vat",
           "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
-          "guest_power_entity": "Optional measured guest demand (W or kW)"
+          "guest_power_entity": "Optional measured guest demand (W or kW)",
+          "dso_mode": "Grid source (manual or verified Radius C)",
+          "dso_manual_fallback": "Optional manual fallback (DKK/kWh excluding VAT)",
+          "dso_stale_days": "Maximum verified tariff cache age (days)",
+          "dated_components": "Dated component rules (see pricing documentation)",
+          "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
+          "heating_registered": "Owner confirms registered electric heating",
+          "annual_usage_kwh": "Verified annual usage (kWh)",
+          "usage_year": "Annual usage year"
         }
       },
       "charger": {

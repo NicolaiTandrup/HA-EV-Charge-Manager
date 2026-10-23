@@ -25,37 +25,27 @@ scheduled refresh, then #7 verified DSO and #8 dated components.
 
 ## Current work / precise next step
 
-Active branch: `feat/persistent-price-engine`, stacked on PR #6 at `f488748`.
-Checkpoint `Persist precomputed per-site prices and make consumers lookup-only`:
-**106 tests passed, zero skipped**, Ruff/format and local official hassfest passed.
-Store/restart, 92/96/100-slot DST days, immutable historical prices, atomic failed
-writes, concurrent/no-op verification updates and lookup-only optimizer consumers
-are covered. Open/check a separate pricing draft PR after pushing this checkpoint.
+Active branch: `feat/verified-danish-pricing`, stacked on `feat/persistent-price-engine`
+(PR #11), itself stacked on PR #6. Price Engine `d1c66b7` (106 tests) and scheduler
+`5c32dc9` (114 tests) both passed remote push/PR tests, hassfest and HACS.
 
-Engine uses per-site HA Store (ADR 002), immutable records/indexed reads, 365-day
-retention, source/component/VAT audit conventions and future-only corrections.
-Source updates/startup compose and persist; consumer refreshes never fetch/compose.
-Native current/next/status price sensors read durable data. Configured entity sources
-must provide quarter-aligned timestamps. Existing partial price feeds stay partial;
-no invented zero slots. External all-in mode does not reverse-engineer components.
+Current checkpoint `Add verified Radius tariffs and date-aware price components`:
+**136 tests passed, no skips**, Ruff/format and official local hassfest passed.
+Includes actual public Radius C fixture rows, DST/effective dates, source identity,
+cache/outage behavior, component VAT, dates/4000-kWh policies, locked overrides and
+subscription exclusion, plus a native end-to-end composed-price test.
 
-Price Engine `d1c66b7` is draft PR #11, stacked on PR #6. Its remote push/PR
-checks all passed (tests, hassfest, HACS).
+Live research confirmed Datahub GLN 5790000705689 / D03 / DT_C_01, DKK/kWh,
+Copenhagen hourly/effective semantics; official Radius application confirms raw
+ex-VAT amounts. ADR 003 records the precise evidence and limitations. No speculative
+scraping/feed mapping. Optional daily cache/manual fallback is native UI-configurable.
+The dated public component adapter uses only the periods supplied in Issue #8;
+future unknown public rates are intentionally unavailable.
 
-Current checkpoint `Schedule verified day-ahead price refresh and recovery`:
-**114 tests passed, no skips**, Ruff passed; official local hassfest passed.
-All five publication times are covered, plus native timer cancellation and atomic
-rejection of partial corrected day publications. Scheduled retries inspect durable
-completeness and verification state; 00:01 always checks sources. Startup verifies
-current and next day. Operational metadata uses a separate HA Store; unchanged
-checks do not rewrite price tables. Check remote CI after pushing this checkpoint.
-
-Next: #7 verified Radius C adapter and #8 dated components.
-Then #7: live API now VERIFIED Radius owner GLN 5790000705689, D03 product DT_C_01,
-Note Nettarif C, PT1H, VATClass D02. Nine actual product rows returned (2026 seasonal
-rows present). Verify documented units/VAT/date semantics before shipping adapter.
-Public API/domain access works after additive network draft settings; no secret.
-#8 supplier rates remain contract-specific; no default inferred from advertising.
+OWNER INPUT PENDING: asked asynchronously for actual per-site EWII markup and VAT
+inclusion. Neither 3.75 nor 6.5 øre is assumed. A dated supplier contract rule with
+source/effective dates is required before validating the owner's true all-in totals.
+Continue safe independent testing/documentation; do not fabricate a contract.
 
 ## Remaining priorities and limitations
 

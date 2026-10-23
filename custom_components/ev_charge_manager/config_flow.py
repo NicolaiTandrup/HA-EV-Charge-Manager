@@ -11,6 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
 from .const import DOMAIN, NAME
+from .price_components import validate_rules
 from .vehicle import FIELDS, discover
 
 
@@ -336,6 +337,22 @@ class Editor:
                     raise ValueError("Select exactly one price source")
                 if user_input.get("nordpool_entry") and user_input["price_basis"] != "spot_ex_vat":
                     raise ValueError("Official prices are spot ex VAT")
+                if user_input.get("dso_mode", "manual") != "manual" and (
+                    user_input["price_basis"] != "spot_ex_vat"
+                    or user_input["grid"]
+                    or user_input.get("grid_tariff_entity")
+                ):
+                    raise ValueError("Automatic grid tariff would duplicate configured cost")
+                if user_input.get("danish_public_rates") and "dated_components" not in user_input:
+                    raise ValueError("Dated supplier contract required")
+                if "dated_components" in user_input:
+                    validate_rules(user_input["dated_components"])
+                    if (
+                        user_input["price_basis"] == "all_in"
+                        or user_input["tax"]
+                        or user_input["supplier"]
+                    ):
+                        raise ValueError("Dated components would duplicate legacy costs")
                 tariff = {
                     "mode": user_input["price_basis"],
                     **{k: user_input[k] for k in ("grid", "tax", "supplier", "vat")},
@@ -345,7 +362,7 @@ class Editor:
                 all_in([], tariff)
                 self._save_item("sites", {**user_input, "tariff": tariff, "currency": "DKK"})
                 return await self.async_step_menu()
-            except ValueError, KeyError:
+            except ValueError, KeyError, TypeError:
                 errors["base"] = "invalid_mapping"
         return self._show_item(
             step_id="site",
@@ -363,14 +380,28 @@ class Editor:
                     ),
                     vol.Optional("price_entity"): entity("sensor"),
                     vol.Optional("grid_tariff_entity"): entity("sensor"),
+                    vol.Required("dso_mode", default="manual"): vol.In(["manual", "radius_c"]),
+                    vol.Optional("dso_manual_fallback"): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=100)
+                    ),
+                    vol.Required("dso_stale_days", default=7): vol.All(
+                        vol.Coerce(int), vol.Range(min=1, max=30)
+                    ),
                     vol.Optional("guest_power_entity"): entity("sensor"),
+                    vol.Optional("dated_components"): selector.ObjectSelector(),
+                    vol.Required("danish_public_rates", default=False): bool,
+                    vol.Required("heating_registered", default=False): bool,
+                    vol.Optional("annual_usage_kwh"): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional("usage_year"): vol.All(
+                        vol.Coerce(int), vol.Range(min=2000, max=2200)
+                    ),
                     vol.Required("price_attribute", default="slots"): str,
                     vol.Required("price_multiplier", default=1): vol.All(
                         vol.Coerce(float), vol.Range(min=0.000001)
                     ),
                     vol.Required("area", default="DK2"): vol.In(["DK1", "DK2"]),
                     vol.Required("price_basis", default="spot_ex_vat"): vol.In(
-                        ["all_in", "spot_ex_vat"]
+                        ["all_in", "spot_ex_vat", "spot_incl_vat"]
                     ),
                     **{
                         vol.Required(k, default=(0.25 if k == "vat" else 0)): vol.All(
