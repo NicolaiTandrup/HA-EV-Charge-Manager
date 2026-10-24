@@ -36,3 +36,25 @@ A GPS change cannot move a reserved session to another site's prices; missing or
 contradictory planning inputs suppress its forecast without ending the session.
 Unknown/manual guests remain excluded from Optimizer ownership/measurement
 attribution to a configured car. Brain-only behavior stays independent of prices.
+
+## Calendar entities
+
+Each measured total also has day/week/month/year entities. Calendar buckets are
+persisted alongside lifetime totals. Site energy/cost uses the site's timezone;
+global distance uses HA's timezone. The ledger retains the timezone chosen when
+its first dated measurements are recorded so later UI timezone edits do not relabel
+past records. Review/rekey explicitly before changing that accounting boundary.
+Weeks start Monday; months/years use local civil boundaries, including DST.
+
+Power intervals are split exactly at local midnight and price boundaries using
+the same trapezoidal measurement. A partially unpriced sample remains entirely
+unpriced, conservatively matching lifetime coverage. Negative costs remain credits.
+Distance increments are attributed to the day of the observed odometer report;
+travel time across a gap is unknown and is not redistributed to invented dates.
+
+Legacy lifetime totals have no recoverable dates and are never assigned to current
+calendar buckets. Period sensors report only recorded buckets, expose their first
+recorded date and use explicit calendar resets. They cannot reconstruct missing
+telemetry or establish billing completeness. No retention pruning or settled-cost
+rewrites are introduced; day buckets survive reload/restart. More detailed session
+exports and historical settled-price backfill remain follow-ups.

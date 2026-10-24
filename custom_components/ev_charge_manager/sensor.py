@@ -4,6 +4,7 @@ from dataclasses import asdict
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .executor import capabilities
@@ -38,6 +39,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
         MeasuredSensor(c, v["id"], "distance_km")
         for v in c.registry.vehicles
         if any(p.get("fields", {}).get("odometer") for p in v.get("providers", []))
+    )
+    # Period sensors use recorded calendar buckets, never redistribute old totals.
+    entities.extend(
+        MeasuredSensor(c, item.vehicle, item.kind, item.site, period)
+        for item in list(entities)
+        if isinstance(item, MeasuredSensor)
+        for period in ("day", "week", "month", "year")
     )
     async_add_entities(entities)
 
@@ -273,9 +281,9 @@ class MeasuredSensor(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, coordinator, vehicle, kind, site=None):
+    def __init__(self, coordinator, vehicle, kind, site=None, period=None):
         super().__init__(coordinator)
-        self.vehicle, self.kind, self.site = vehicle, kind, site
+        self.vehicle, self.kind, self.site, self.period = vehicle, kind, site, period
         labels = {
             "energy_kwh": ("Measured charging energy", SensorDeviceClass.ENERGY, "kWh"),
             "cost": ("Measured priced charging cost", SensorDeviceClass.MONETARY, "DKK"),
@@ -291,10 +299,15 @@ class MeasuredSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = (
             f"{coordinator.entry.entry_id}_{vehicle}_{site or 'vehicle'}_history_{kind}"
         )
+        if period:
+            self._attr_name += " " + period
+            self._attr_unique_id += "_" + period
         self._attr_device_class = device_class
         self._attr_native_unit_of_measurement = unit
         self._attr_state_class = (
-            SensorStateClass.TOTAL if kind == "cost" else SensorStateClass.TOTAL_INCREASING
+            SensorStateClass.TOTAL
+            if kind == "cost" or period
+            else SensorStateClass.TOTAL_INCREASING
         )
         self._attr_device_info = {
             "identifiers": {(DOMAIN, coordinator.entry.entry_id + "_" + vehicle)},
@@ -315,24 +328,53 @@ class MeasuredSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
-        return round(getattr(self.history, self.kind), 6) if self.history else None
+        if not self.history:
+            return None
+        value = (
+            self.history.period_total(self.kind, self.period, dt_util.utcnow())
+            if self.period
+            else getattr(self.history, self.kind)
+        )
+        return round(value, 6)
+
+    @property
+    def last_reset(self):
+        return (
+            self.history.period_start(self.period, dt_util.utcnow())
+            if self.period and self.history
+            else None
+        )
 
     @property
     def extra_state_attributes(self):
         history = self.history
+        now = dt_util.utcnow()
+        unpriced = (
+            history.period_total("unpriced_energy_kwh", self.period, now)
+            if history and self.period
+            else history.unpriced_energy_kwh
+            if history
+            else None
+        )
+        energy = (
+            history.period_total("energy_kwh", self.period, now)
+            if history and self.period
+            else history.energy_kwh
+            if history
+            else None
+        )
         return {
             "schema_version": 1,
+            "calendar_period": self.period,
+            "calendar_timezone": history.calendar_timezone if history else None,
+            "calendar_coverage": "observed_buckets_only",
+            "first_recorded_date": min(history.daily) if history and history.daily else None,
+            "legacy_lifetime_not_redistributed": True,
             "basis": "measured_not_planned",
             "site_id": self.site,
             "vehicle_id": self.vehicle,
-            "unpriced_energy_kwh": history.unpriced_energy_kwh if history else None,
-            "cost_coverage": (
-                "partial"
-                if history.unpriced_energy_kwh
-                else "priced"
-                if history.energy_kwh
-                else "no_samples"
-            )
+            "unpriced_energy_kwh": unpriced,
+            "cost_coverage": ("partial" if unpriced else "priced" if energy else "no_samples")
             if history
             else "unavailable",
             "sampling_gap_limit_seconds": 180,
