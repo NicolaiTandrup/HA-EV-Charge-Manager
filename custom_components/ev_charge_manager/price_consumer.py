@@ -1,8 +1,9 @@
 """Versioned read-only consumer. No market fetching, fees, VAT or price storage."""
 
-from asyncio import Lock, timeout
+from asyncio import Lock
 from datetime import timedelta
 from hashlib import sha256
+from importlib import import_module
 from math import isfinite
 from zoneinfo import ZoneInfo
 
@@ -12,7 +13,7 @@ from homeassistant.exceptions import HomeAssistantError
 from .planner import PriceSlot, utc
 
 DOMAIN = "ha_energy_price_engine"
-EVENT = f"{DOMAIN}_prices_updated"
+EVENT = f"{DOMAIN}_price_revision_v1"
 
 
 def decode(response, entry_id, site_id, now, start, end, max_age=129600):
@@ -99,44 +100,13 @@ class PriceConsumer:
         self.attempts[key] = now
         old = self.tables.get(key, ())
         try:
-            producer = site["producer_entry"]
-            entry = self.hass.config_entries.async_get_entry(producer)
-            if (
-                entry is None
-                or entry.domain != DOMAIN
-                or entry.state != ConfigEntryState.LOADED
-                or not self.hass.services.has_service(DOMAIN, "get_prices")
-            ):
-                raise ValueError("Price producer not loaded")
             start = (now - timedelta(minutes=3)).replace(second=0, microsecond=0)
             start = start.replace(minute=start.minute // 15 * 15)
             local = now.astimezone(ZoneInfo(site["timezone"]))
             end = utc(
                 (local + timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
             )
-            async with timeout(10):
-                response = await self.hass.services.async_call(
-                    DOMAIN,
-                    "get_prices",
-                    {
-                        "api_version": 1,
-                        "config_entry_id": producer,
-                        "site_id": site["producer_site"],
-                        "start": start.isoformat(),
-                        "end": end.isoformat(),
-                    },
-                    blocking=True,
-                    return_response=True,
-                )
-            slots, verified = decode(
-                response,
-                producer,
-                site["producer_site"],
-                now,
-                start,
-                end,
-                site.get("price_max_age_seconds", 129600),
-            )
+            slots, verified, response = self._lookup(site, start, end, now)
             if response["revision"] < self.revisions.get(key, 0):
                 raise ValueError("Producer revision rollback")
             self.tables[key] = slots
@@ -150,7 +120,16 @@ class PriceConsumer:
                 "reason": None,
                 "api_version": 1,
             }
-        except (ValueError, TypeError, KeyError, HomeAssistantError, TimeoutError) as error:
+        except (
+            ValueError,
+            TypeError,
+            KeyError,
+            AttributeError,
+            ImportError,
+            LookupError,
+            HomeAssistantError,
+            TimeoutError,
+        ) as error:
             self.tables[key] = ()
             self.keys[key] = "unavailable"
             self.status[key] = {
@@ -160,13 +139,70 @@ class PriceConsumer:
             }
         return old != self.tables[key]
 
+    def lookup(self, site, start, end, now):
+        """Read the producer-owned API v1; never fetch, compose or persist prices."""
+        return self._lookup(site, start, end, now)[0]
+
+    def _lookup(self, site, start, end, now):
+        entry = self.hass.config_entries.async_get_entry(site["producer_entry"])
+        if entry is None or entry.domain != DOMAIN or entry.state != ConfigEntryState.LOADED:
+            raise ValueError("Price producer not loaded")
+        # API v1 site IDs are globally unique. Verify selected entry ownership
+        # against its durable business configuration, never private runtime state.
+        config = {**entry.data, **entry.options}
+        if config.get("id") != site["producer_site"]:
+            raise ValueError("Producer/site ownership mismatch")
+        api = import_module(f"custom_components.{DOMAIN}.api").get_api(self.hass, version=1)
+        result = api.lookup(site["producer_site"], start, end, now=now)
+        if str(result.status) != "READY":
+            raise ValueError(f"{result.status}: {result.reason or 'Producer prices not ready'}")
+        expected = int((end - start).total_seconds() / 900)
+        if result.expected_slots != expected or result.valid_slots != expected:
+            raise ValueError("Producer coverage count mismatch")
+        if any(
+            r.site_id != site["producer_site"] or r.currency != "DKK" or r.unit != "DKK/kWh"
+            for r in result.records
+        ):
+            raise ValueError("Producer record site or unit mismatch")
+        # Normalize the frozen API object for the existing strict range validator.
+        # This dictionary is internal; it is not an HA service response contract.
+        response = {
+            "api_version": result.api_version,
+            "producer_entry_id": entry.entry_id,
+            "site_id": result.site_id,
+            "currency": "DKK",
+            "unit": "DKK/kWh",
+            "vat_included": True,
+            "revision": result.revision,
+            "status": "READY",
+            "verified_at": result.last_success,
+            "slots": [
+                {
+                    "start": r.start.isoformat(),
+                    "end": r.end.isoformat(),
+                    "final_price_incl_vat": r.final_price_incl_vat,
+                }
+                for r in result.records
+            ],
+        }
+        slots, verified = decode(
+            response,
+            entry.entry_id,
+            site["producer_site"],
+            now,
+            start,
+            end,
+            site.get("price_max_age_seconds", 129600),
+        )
+        return slots, verified, response
+
     def slots(self, site, now):
         producer = self.hass.config_entries.async_get_entry(site["producer_entry"])
         if (
             producer is None
             or producer.domain != DOMAIN
             or producer.state != ConfigEntryState.LOADED
-            or not self.hass.services.has_service(DOMAIN, "get_prices")
+            or {**producer.data, **producer.options}.get("id") != site["producer_site"]
         ):
             self.tables[site["id"]] = ()
             self.keys[site["id"]] = "unavailable"

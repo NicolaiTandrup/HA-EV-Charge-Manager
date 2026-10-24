@@ -1,11 +1,11 @@
-"""Public producer contract: mocks only; no actual producer implementation exists."""
+"""Strict normalized snapshots and native producer API integration."""
 
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.core import SupportsResponse
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.ev_charge_manager.price_consumer import DOMAIN, EVENT, decode
@@ -39,6 +39,32 @@ def response(entry, site, start, end, price=1):
         "verified_at": NOW.isoformat(),
         "slots": slots,
     }
+
+
+def api_result(data):
+    """Frozen producer API shape, not an HA service response."""
+    rows = tuple(
+        SimpleNamespace(
+            site_id=data["site_id"],
+            start=datetime.fromisoformat(r["start"]),
+            end=datetime.fromisoformat(r["end"]),
+            currency="DKK",
+            unit="DKK/kWh",
+            final_price_incl_vat=r["final_price_incl_vat"],
+        )
+        for r in data["slots"]
+    )
+    return SimpleNamespace(
+        api_version=data["api_version"],
+        site_id=data["site_id"],
+        status=data["status"],
+        revision=data["revision"],
+        last_success=data["verified_at"],
+        reason=None,
+        records=rows,
+        expected_slots=len(rows),
+        valid_slots=len(rows),
+    )
 
 
 @pytest.mark.parametrize(
@@ -77,7 +103,7 @@ def test_negative_prices_and_partial_gaps_are_not_zero_filled():
 async def test_native_consumer_no_embedded_producer_and_revision_event(hass, freezer):
     freezer.move_to(NOW)
     config = model(hass)
-    producer = MockConfigEntry(domain=DOMAIN)
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "producer_home"})
     producer.add_to_hass(hass)
     producer.mock_state(hass, ConfigEntryState.LOADED)
     config["sites"][0] = {
@@ -92,21 +118,14 @@ async def test_native_consumer_no_embedded_producer_and_revision_event(hass, fre
     }
     calls = []
 
-    async def get_prices(call):
-        calls.append(dict(call.data))
-        return response(
-            producer.entry_id,
-            "producer_home",
-            datetime.fromisoformat(call.data["start"]),
-            datetime.fromisoformat(call.data["end"]),
-        )
+    def lookup(site, start, end, **kwargs):
+        calls.append((site, start, end))
+        return api_result(response(producer.entry_id, site, start, end))
 
-    hass.services.async_register(
-        DOMAIN, "get_prices", get_prices, supports_response=SupportsResponse.ONLY
-    )
     entry = MockConfigEntry(domain="ev_charge_manager", data=config)
     entry.add_to_hass(hass)
     with (
+        patch("custom_components.ev_charge_manager.price_consumer.import_module") as module,
         patch(
             "custom_components.ev_charge_manager.price_update.PriceUpdater.refresh",
             new_callable=AsyncMock,
@@ -116,6 +135,7 @@ async def test_native_consumer_no_embedded_producer_and_revision_event(hass, fre
             side_effect=AssertionError("EV price arithmetic"),
         ),
     ):
+        module.return_value.get_api.return_value.lookup.side_effect = lookup
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         c = entry.runtime_data
@@ -207,17 +227,8 @@ def test_consumed_all_in_prices_preserve_earliest_tolerance_ties():
 async def test_producer_error_preserves_reason_and_bounded_retry(hass):
     from custom_components.ev_charge_manager.price_consumer import PriceConsumer
 
-    producer = MockConfigEntry(domain=DOMAIN, state=ConfigEntryState.LOADED)
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "house"}, state=ConfigEntryState.LOADED)
     producer.add_to_hass(hass)
-    calls = []
-
-    async def fail(call):
-        calls.append(call)
-        raise TimeoutError()
-
-    hass.services.async_register(
-        DOMAIN, "get_prices", fail, supports_response=SupportsResponse.ONLY
-    )
     consumer = PriceConsumer(hass)
     site = {
         "id": "home",
@@ -225,9 +236,13 @@ async def test_producer_error_preserves_reason_and_bounded_retry(hass):
         "producer_site": "house",
         "timezone": "Europe/Copenhagen",
     }
-    await consumer.refresh(site, NOW)
-    await consumer.refresh(site, NOW)
-    assert len(calls) == 1
+    with patch(
+        "custom_components.ev_charge_manager.price_consumer.import_module",
+        side_effect=TimeoutError(),
+    ) as module:
+        await consumer.refresh(site, NOW)
+        await consumer.refresh(site, NOW)
+        assert module.call_count == 1
     assert consumer.slots(site, NOW) == ()
     assert consumer.status["home"]["status"] == "ERROR"
     assert consumer.status["home"]["reason"] == "TimeoutError"
@@ -237,7 +252,7 @@ async def test_producer_error_preserves_reason_and_bounded_retry(hass):
 async def test_native_site_configuration_contains_consumer_mapping_not_tariffs(hass):
     from custom_components.ev_charge_manager.config_flow import defaults
 
-    producer = MockConfigEntry(domain=DOMAIN)
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "producer_home"})
     producer.add_to_hass(hass)
     entry = MockConfigEntry(domain="ev_charge_manager", data=defaults())
     entry.add_to_hass(hass)
@@ -262,3 +277,52 @@ async def test_native_site_configuration_contains_consumer_mapping_not_tariffs(h
     site = entry.options["sites"][0]
     assert site["price_source"] == "energy_price_engine"
     assert "tariff" not in site and "nordpool_entry" not in site
+
+
+@pytest.mark.parametrize("status", ["INCOMPLETE", "STALE", "ERROR", "NOT_LOADED"])
+async def test_public_api_degraded_status_never_uses_legacy_or_partial_prices(hass, status):
+    from custom_components.ev_charge_manager.price_consumer import PriceConsumer
+
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "home"}, state=ConfigEntryState.LOADED)
+    producer.add_to_hass(hass)
+    site = {
+        "id": "home",
+        "producer_entry": producer.entry_id,
+        "producer_site": "home",
+        "timezone": "UTC",
+    }
+    result = api_result(response(producer.entry_id, "home", NOW, NOW + timedelta(hours=36)))
+    result.status = status
+    consumer = PriceConsumer(hass)
+    with patch("custom_components.ev_charge_manager.price_consumer.import_module") as module:
+        module.return_value.get_api.return_value.lookup.return_value = result
+        await consumer.refresh(site, NOW)
+    assert not consumer.slots(site, NOW)
+    assert status in consumer.status["home"]["reason"]
+    producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
+
+
+async def test_public_api_revision_rollback_clears_usable_prices(hass):
+    from custom_components.ev_charge_manager.price_consumer import PriceConsumer
+
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "home"}, state=ConfigEntryState.LOADED)
+    producer.add_to_hass(hass)
+    site = {
+        "id": "home",
+        "producer_entry": producer.entry_id,
+        "producer_site": "home",
+        "timezone": "UTC",
+    }
+    consumer = PriceConsumer(hass)
+    with patch("custom_components.ev_charge_manager.price_consumer.import_module") as module:
+        api = module.return_value.get_api.return_value
+        api.lookup.side_effect = lambda site, start, end, **kw: api_result(
+            response(producer.entry_id, site, start, end)
+        )
+        await consumer.refresh(site, NOW)
+        assert consumer.slots(site, NOW)
+        consumer.revisions["home"] = 2
+        await consumer.refresh(site, NOW, force=True)
+        assert not consumer.slots(site, NOW)
+        assert "rollback" in consumer.status["home"]["reason"]
+    producer.mock_state(hass, ConfigEntryState.NOT_LOADED)

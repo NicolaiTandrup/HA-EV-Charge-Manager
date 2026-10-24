@@ -2,13 +2,15 @@
 
 Owner decision, 2026-10-24: HA-Energy-Price-Engine owns Fetch → Normalize → Calculate
 → Persist → Lookup, source scheduling and pricing UI. EV Charge Manager consumes
-only final, verified, VAT-inclusive DKK/kWh through proposed contract v1. It owns
+only final, verified, VAT-inclusive DKK/kWh through producer-owned API v1. It owns
 vehicle/session management, simulations, planning and measured EV history.
 
 New sites use explicit producer config-entry/site mapping. Missing producer is a
 readiness limitation, not a reason to duplicate calculations or fall back silently.
-The producer repo has requirements but no implementation yet. Consumer contract
-regressions use a mock read-only service; runtime interoperability remains unproven.
+Producer draft #7 now implements the public Python API. Cross-repository tests run
+against its pinned code, reusing companion EV draft #15 contract-test coverage.
+The earlier service proposal in EV #13 / producer #6 is superseded. Automated
+interop is validated separately from hardware acceptance and production cutover.
 
 Existing pricing modules, dated fixtures and PRs #11/#12 remain tested migration and
 reference material. Legacy sites are neither rewritten nor switched automatically.

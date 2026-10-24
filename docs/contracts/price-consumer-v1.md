@@ -1,96 +1,57 @@
-# Price lookup contract v1 — producer/consumer proposal
+# Producer-owned read-only price API v1
 
-Status: draft interoperability proposal, 2026-10-24. Authoritative producer:
-NicolaiTandrup/HA-Energy-Price-Engine, domain `ha_energy_price_engine`.
-Consumer: `ev_charge_manager`. The producer repository currently has no runtime
-implementation. Consumer tests use mocked services, not a deployed producer.
-Review changes together in the separate repository PRs; no cutover is implied.
+Authoritative implementation and contract:
+[Price Engine draft #7](https://github.com/NicolaiTandrup/HA-Energy-Price-Engine/pull/7),
+`docs/API.md` and `custom_components/ha_energy_price_engine/api.py`.
+EV reconciliation reuses the adapter/test approach in
+[companion draft #15](https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/15).
+The prior `get_prices` service proposal in EV #13 / producer #6 is superseded;
+no such service is required or called.
 
-## Read-only range service
+Discover lazily with `get_api(hass, version=1)` from the public module. `sites()`
+returns immutable site descriptors. `lookup(site_id, start, end, now=now)` reads
+precomputed persisted prices without source fetching, arithmetic or writes.
+Ranges are aware UTC, quarter-aligned, half-open `[start,end)`; local DST days can
+contain 92, 96 or 100 quarters. Missing discovery/site is not free electricity.
 
-`ha_energy_price_engine.get_prices` supports response-only HA service calls:
+Frozen `PriceResult` carries api_version, site_id, status, records, expected_slots,
+valid_slots, last_success, reason and current revision. Each frozen record includes
+site_id, start/end, final_price_incl_vat, currency DKK, unit DKK/kWh, source/component
+JSON, calculated_at and its own revision. Older settled rows may have older revisions.
+Negative and explicit zero prices pass through unchanged. No VAT is added by EV.
 
-```json
-{"api_version":1,"config_entry_id":"producer-entry","site_id":"producer-site","start":"2026-10-24T12:00:00+00:00","end":"2026-10-24T12:15:00+00:00"}
+EV accepts only READY with exact contiguous range coverage. INCOMPLETE, STALE,
+ERROR and NOT_LOADED yield no usable scheduling prices; no legacy fallback occurs.
+Producer controls operational readiness, including current/future date verification.
+EV additionally checks configured maximum verification age, nonfinite values,
+units, identity and monotonic site revisions. The selected loaded config entry's
+public durable `id` must match the selected global producer site ID; EV does not
+inspect private runtime coordinator objects. No automatic entry conversion occurs.
+
+The synthetic `example-response-v1.json` is retained only as an **internal normalized
+validator fixture**, not a serialized producer API/service response. API tests also
+exercise actual producer objects. Historical accounting backfill needs a separate
+consumer path that respects the producer's settled historical readiness semantics.
+
+Subscribe to `ha_energy_price_engine_price_revision_v1`: api_version, site_id,
+revision, start/end and affected_slots. Events follow durable future-price changes;
+metadata-only checks do not emit. Filter version/site, coalesce duplicate revisions,
+and re-read; event data alone is never usable price data. Periodic read retries are
+bounded to once/minute and loaded-entry checks apply on every use.
+
+Charging priorities, 30-minute regular replanning, 0.005 DKK/kWh earliest-slot tie
+policy, guest exclusion, safe simulations and shared-site limits remain unchanged.
+No commands, live HA access, production cutover, release or merge are authorized.
+
+## Reproducible cross-repository validation
+
+CI checks out producer `46b33bf50773082b6d942816c676dd098ee6bad1` into
+`price-engine-reference`. Locally, set `PRICE_ENGINE_SOURCE` to an isolated export
+of that commit, then run:
+
+```sh
+PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/bin/python -m pytest tests/test_price_api_interop.py tests/test_price_consumer.py
 ```
 
-Start/end are inclusive/exclusive UTC quarter boundaries. Maximum 1000 intervals.
-The explicit producer config entry and site identify the table; display names,
-entity suffixes and household/supplier names never establish identity.
-
-Response example (synthetic, no private household data):
-
-```json
-{
-  "api_version": 1,
-  "producer_entry_id": "producer-entry",
-  "site_id": "producer-site",
-  "currency": "DKK",
-  "unit": "DKK/kWh",
-  "vat_included": true,
-  "revision": 1,
-  "status": "READY",
-  "verified_at": "2026-10-24T12:00:00+00:00",
-  "slots": [{"start":"2026-10-24T12:00:00+00:00","end":"2026-10-24T12:15:00+00:00","final_price_incl_vat":1.25}]
-}
-```
-
-`api_version` and `revision` are actual integers, not booleans. Revision is durable,
-nonnegative and monotonic per producer/site. Currency/unit/VAT inclusion are explicit;
-no consumer FX, unit scaling, VAT multiplication or tariff reconstruction. Prices
-may be negative or genuinely zero; missing/null/nonfinite prices are never zero.
-Unknown fields may be ignored compatibly; breaking semantics require a new version.
-
-Producer returns precomputed durable final prices. Reads must never fetch sources,
-recalculate charges, or mutate price history. Settled historical amounts remain
-immutable; future corrections advance the revision. Component/invoice details stay
-producer-owned and need not cross this narrow consumer API.
-
-## Availability and freshness
-
-- READY: sorted, unique, contiguous quarters cover the exact requested range.
-- INCOMPLETE: only verified available quarters are returned, possibly with gaps.
-  EV may produce a conditional/provisional plan using known intervals, never filling
-  gaps or gambling on missing prices. A complete plan may use a sufficient subset.
-- STALE / ERROR: no new EV schedule is trusted. No stale cache is silently promoted
-  to READY. Producer unload/missing service fails closed even within lookup throttle.
-
-`verified_at` is the actual latest relevant successful verification, not read time.
-It must be offset-aware, not future-dated. Consumer default maximum age is 36 hours,
-UI-configurable up to 48 hours for current/future planning. Producer policies can be
-stricter and report STALE sooner. Range results may include older settled historical
-rows; a future dedicated accounting backfill API must define their age semantics.
-Consumer currently queries the recent measurement window through next local day.
-
-## Revision event
-
-Event `ha_energy_price_engine_prices_updated`:
-
-```json
-{"api_version":1,"producer_entry_id":"producer-entry","site_id":"producer-site","revision":2,"affected_start":"2026-10-24T13:00:00+00:00","affected_end":"2026-10-24T23:00:00+00:00"}
-```
-
-Emit only for actual changed future final prices, not unchanged source checks,
-metadata-only updates or dashboard reads. Consumer filters entry/site/version and
-coalesces duplicate/past revision numbers. It requests a new range after a matching
-revision; it never reaches into producer private runtime objects.
-
-Consumer normally checks the read-only lookup no more than once per minute, with
-bounded retry when not loaded. Matching revision events can bypass that interval.
-Slot expiry/freshness and entry readiness are checked locally on every use. A failed
-response clears usable schedule data; last known revision still guards rollback.
-Producer should expose its own availability diagnostics; no mandatory dashboard or
-supplier/vehicle integration dependency is introduced.
-
-## Scheduling and rollout
-
-EV retains staged SoC priorities, long-trip safety margin, Cheap Boost simulation,
-0.005 DKK/kWh tie groups with earliest-first, guest exclusion, shared-site limits,
-30-minute regular replanning and earlier meaningful-input/deadline invalidation.
-No missing-price fallback issues a real start/stop command. No vehicle/charger
-transport exists in the preview.
-
-New EV sites select the independent producer. Existing pricing settings and tested
-code remain explicitly labeled migration/reference; no automatic entry migration,
-rate copy, Node-RED edits or production source switch occurs. Producer API readiness
-and independent runtime tests are required before claiming real interoperability.
+These are real producer API/ledger calls using synthetic inputs and temporary HA
+storage, not live hardware/source acceptance. Do not claim invoice verification.
