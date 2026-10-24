@@ -60,11 +60,13 @@ passed. All six exact-head remote push/PR tests/hassfest/HACS checks passed. New
 observed date buckets support day/week/month/year entities, exact local-midnight
 splitting, unpriced energy and negative cost. Legacy lifetime totals are not dated.
 
-Active branch `feat/beta-readiness`, based on #21. Checkpoint subject
+Active branch `feat/beta-readiness`, draft **#22**, based on #21. Checkpoint subject
 `Validate concurrent beta fleets and document reversible offline cutover`:
 **210 local tests passed, zero skips, 92% coverage**; Ruff/format including scripts
-passed. Official local hassfest passed (1 integration, 0 invalid). Remote checks pending
-push; do not report them as passed until exact-head completion.
+passed. Official local hassfest passed (1 integration, 0 invalid). Code checkpoint
+`2aba16f` passed all six exact-head remote
+push/PR tests, hassfest and HACS checks. The following handoff-only commit records
+this evidence and corrects identity documentation; substantive code is unchanged.
 Failing regression exposed dangling active sessions after Options removal; fixed
 by pruning only active references, retaining historical ledgers. Real HA tests
 cover 0/1/2/6 concurrent vehicles/chargers/sites, explicit PE mapping, equal physical
@@ -142,8 +144,8 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Publish beta-readiness draft based on #21, check exact-head CI and record results.
-Then continue in this order, without redoing completed ports/configuration:
+The beta-readiness code is published and CI green. Check this handoff commit
+head/CI first, then continue in this order without redoing completed work:
 
 1. Add durable dormant-executor request/uncertainty audit storage and recovery tests,
    preserving no default transport/public enablement; define explicit physical-session
@@ -185,7 +187,17 @@ zero skips in the last full run. Do not reinstall working dependencies. Local fu
 HACS container DNS is unavailable; actual remote HACS checks are the evidence.
 CI checks out pinned producer source to ignored `price-engine-reference/`. Local
 PRICE_ENGINE_SOURCE must point at an isolated export of the pinned producer commit.
-See docs/contracts/price-consumer-v1.md for provenance and commands.
+See docs/contracts/price-consumer-v1.md for provenance and commands. If the local
+producer export is missing, recreate it without changing either checkout:
+
+```sh
+mkdir -p /tmp/ev-price-producer-reference
+git -C /workspace/HA-Energy-Price-Engine archive 46b33bf50773082b6d942816c676dd098ee6bad1 | tar -x -C /tmp/ev-price-producer-reference
+```
+
+If pinned source is unavailable, fixture-only development remains possible using
+`python -m pytest --ignore=tests/test_price_api_interop.py`; report actual producer
+conformance as unrun in that mode. Do not replace the version pin with a moving head.
 
 ## Checkpoint safety
 

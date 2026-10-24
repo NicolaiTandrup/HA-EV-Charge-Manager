@@ -13,8 +13,11 @@ One config entry owns a shared vehicle registry and command infrastructure.
 Vehicle UUIDs survive name changes and provider ordering. HA device IDs identify
 provider devices, not physical vehicles. Multiple devices can feed one logical
 vehicle; one device cannot feed two logical vehicles. Removing/recreating a
-vehicle intentionally creates a new identity. Deployed core has no Tesla names,
-VIN matching, vehicle SDK or vendor-specific network dependency.
+vehicle intentionally creates a new identity. No household names, vehicle SDK or
+vendor-specific network dependency is introduced. Exact existing Tesla registry
+VIN evidence prevents duplicate/conflicting logical identities; missing evidence
+requires manual review. No network/VIN lookup, fuzzy matching or automatic merge
+is performed, and raw identifiers are not published in diagnostics.
 
 Brain is one global association engine so identities cannot be assigned twice.
 Optimizer uses one independent planner state/history namespace per site. Neither

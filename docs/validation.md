@@ -114,7 +114,8 @@ zero invalid. Includes real HA lifecycle tests for zero/one/two/six concurrent
 vehicles, chargers and sites, Options removal with history preservation, physical
 charger replacement authority, exact registry VIN duplicate/conflict guards, native
 capability review, observed-only calendar totals and offline export comparison.
-Remote final-head results are tracked in DEVELOPMENT_STATUS.md.
+Beta-readiness code `2aba16f` passed all six exact-head remote push/PR tests,
+hassfest and HACS checks. DEVELOPMENT_STATUS.md records the handoff checkpoint.
 
 No installed HA OS/hardware acceptance or full household broker/invoice parity is
 claimed. Missing full broker export and raw recorded household inputs are explicit.
