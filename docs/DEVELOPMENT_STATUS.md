@@ -1,89 +1,119 @@
 # Development handoff
 
-Updated 2026-10-24. Read AGENTS.md, current issues/PRs and Git state first.
+Updated 2026-10-24. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
 
-## Architecture / current branch
+## Owner architecture decision / PR stack
 
-Owner decision: **HA-Energy-Price-Engine is authoritative**. EV consumes final prices;
-embedded pricing is frozen migration/reference. No further tariff/source/VAT/price
-ledger/scheduling business development belongs here. See ADR 004 and shared draft
-contract v1. Do not repeat the previous pricing implementation or invoice question.
+HA-Energy-Price-Engine is the authoritative producer. EV consumes final inclusive
+prices only. Embedded pricing is **frozen migration/reference**, not a permanent
+subsystem to expand. No new supplier/DSO/VAT/ledger/scheduling business work here.
+ADR 004 supersedes the pricing ownership in earlier ADRs.
 
-Active branch `feat/authoritative-price-consumer`, based on `feat/verified-danish-pricing`
-checkpoint `9d949c6`. Existing draft stack #5 → #6 → #11 → #12 stays unmerged.
-New consumer draft should target #12's branch. Producer contract proposal is
-[HA-Energy-Price-Engine PR #6](https://github.com/NicolaiTandrup/HA-Energy-Price-Engine/pull/6),
-commit `76fa1ab`, branch `docs/ev-consumer-contract-v1` based on its main.
+Existing unmerged drafts: #5 → #6 → #11 → #12 (last source checkpoint `9d949c6`).
+EV consumer draft #13: branch `feat/authoritative-price-consumer`, code `3204a2f`,
+based on #12. **152 tests passed**, Ruff/format/local hassfest passed; all exact-head
+remote push/PR tests, hassfest and HACS passed.
 
-## Completed and validated
+Independent producer contract proposal: HA-Energy-Price-Engine PR #6, branch
+`docs/ev-consumer-contract-v1`, commit `76fa1ab` based on main. Docs-only proposal,
+not a runtime producer. Shared contract/example identical across repositories.
+JSON parses and its synthetic example is exercised by EV decoder tests; producer
+runtime/hassfest/HACS are unrun because no producer implementation exists.
 
-- Previous registry/provider, priorities, guest/simulation and pricing reference
-  implementation: 138 tests and exact-head remote tests/hassfest/HACS passed.
-- Current consumer checkpoint: **152 local tests passed, zero skipped**; Ruff and
-  formatting passed. Official local hassfest passed before the final fixture-only
-  test addition (no metadata change). Remote consumer CI must be checked after push.
-- New sites explicitly select producer config entry/site through native UI. Legacy
-  entries remain unchanged, visibly labeled migration/reference; no silent cutover.
-- Consumer validates version, identity, DKK/kWh/inclusive VAT, revision, source age,
-  sorted unique quarter ranges and READY completeness. Partial data is never zero-
-  filled; stale/error/unloaded producers fail closed immediately. Matching revision
-  events are filtered/coalesced; lookups throttle normally to once per minute.
-- No embedded fetch, tariff arithmetic or publication timer starts for a consumer
-  site. Tests spy on embedded paths and use mock read-only producer responses.
-- Producer contract text/example are identical in both repos; synthetic response
-  is exercised through EV decoder. Producer docs-only PR does not implement API.
+Active EV branch `feat/measured-ev-history`, draft **#14**, based on #13.
+Measured-history code `c38e915` passed **166 local tests** and all six exact-head
+remote push/PR tests, hassfest and HACS.
+Current follow-up subject `Validate producer mapping and require scheduled optimizer starts`:
+validated at `8def3463f43765311eae791892aba43a777fa1d3`:
+**168 tests passed, zero skipped; 91% coverage**; Ruff/format and official local
+hassfest passed with zero invalid integrations. All six exact-head remote push/PR
+checks passed: tests, hassfest and HACS. The following handoff-only commit records
+this evidence; substantive code is unchanged.
+It adds native producer-mapping validation and rejects Optimizer starts outside a
+current proposed allocation, including already-complete targets. Do not merge stack.
 
-## In progress / next independent task
+## Completed (do not repeat)
 
-Publish/check the separate consumer draft PR, then measured EV energy/cost/distance
-history. Reuse existing History and coordinator stores; expose native sensors.
-Track measured energy even when prices are missing, mark unpriced energy explicitly
-and never count it as free. Keep restart baselines/gap guards, negative-cost support,
-physical/site/guest eligibility and odometer provider-switch rebasing. Distance is
-one logical-vehicle ledger, not duplicated across every site.
+- Prior vehicle registry/provider/snapshot, Brain guest/simulation and optimizer
+  parity work stays intact. Original Node-RED exports remain byte-identical.
+- Consumer v1 proposal: explicit producer-entry/site identity, strict version,
+  inclusive DKK/kWh, verification age/revision/range validation. Partial ranges
+  never become fake zero prices. Stale/error/unloaded producers fail closed,
+  including inside lookup throttle; duplicate events coalesce and rollback fails.
+- New sites configure the independent producer in native UI; legacy pricing sites
+  remain explicitly migration/reference, with no silent conversion or cutover.
+  Consumer sites start no embedded fetch/composition/publication timers.
+- Further lookup hardening: per-site serialization, ten-second timeout, bounded
+  retries, retained diagnostic reasons and earliest-price-tolerance regression.
+- Native measured site/vehicle energy, known priced cost and unpriced energy.
+  Price absence is not zero-cost charging. Actual measurement is independent of
+  SoC/target/planner availability; new power reports only, no watchdog extrapolation.
+  Source gaps/restarts/provider changes reset baselines. Negative prices are credits.
+- One durable distance ledger per logical vehicle, km/mi normalization, registry-
+  rename continuity and conservative provider/calibration rebasing. No multi-site
+  duplicate distance. Invalid/nonfinite values and source resets are guarded.
+- Physical Brain assignment gates site pricing: GPS cannot move an established
+  session to another site. Optimizer simulation intents require a valid, fresh,
+  correctly attributed plan and usable external prices. Guest protection remains.
+- EV's own outputs cannot be circular vehicle inputs and perpetuate fake freshness.
+- Regressions cover multi-day zero-power guest authorization, source gaps, missing
+  SoC/GPS with valid measurement, unpriced persistence/restart, distance rename/
+  provider switch, negative costs, site mismatch and producer contract failures.
 
-Then broaden Brain/provider safety and optimizer parity regression coverage without
-changing priority order, 30-minute replanning, earliest-slot tolerance, guest guards,
-command ownership or simulation-only boundary.
+## Real limitations / external prerequisites
 
-## Genuine external prerequisites
+Producer repo currently has README/LICENSE, requirements Issues #1–#5 and the
+contract proposal only. **No get_prices runtime implementation exists.** EV tests
+mock the service; actual two-runtime interoperability is NOT validated. Next: adopt
+and implement the producer contract independently, then run shared conformance and
+parallel-read tests. Do not recreate tariff ownership in EV to bypass this blocker.
 
-Independent producer currently has README/LICENSE, requirements Issues #1–#5 and
-contract proposal only: **no runtime get_prices service exists**. Actual two-runtime
-interoperability remains blocked pending producer implementation/adoption. Consumer
-mock tests are not evidence that real producer calls work.
+Producer Issue #4 records household invoice-backed EWII markup **0.030 DKK/kWh ex
+VAT for June–September 2026 only**. This resolves that historical fact only. Raw
+invoices are absent from the workspace/checkouts: no raw-file verification or
+private invoice fixture is claimed. Never infer current/later/other-site rates.
+Invoice verification and pricing UI belong in the producer, not the EV consumer.
 
-Producer Issue #4 records invoice-backed household EWII **0.030 DKK/kWh ex VAT in
-June–September 2026 only**. Raw invoices are absent from workspace/source checkouts;
-no raw-file verification, private invoice fixture, current-term inference or other-
-site default is claimed. Invoice/source verification belongs to the producer.
+Power-derived history is an observation estimate, not certified/billing-grade.
+Verify AC input boundary for delivered electricity costing. Missing telemetry is
+not interpolated; cost coverage refers only to recorded energy. Historical price
+backfill/accounting beyond the live measurement window needs an explicit settled
+producer contract. Hardware/provider-brand acceptance remains unrun.
 
-## Validation commands
+## Recommended next step
+
+Code CI is green for the measured-history draft. Next coordinate producer
+PR #6 / Issue #5 adoption and actual API implementation. Extend consumer tests only
+against the agreed version. Independent EV follow-ups: settled-history backfill,
+verified brand capability metadata and broader parity fixtures; no live commands.
+Do not repeat completed ports, pricing research, registry/consumer/history work.
+
+## Exact validation commands
 
 From `/workspace/HA-EV-Charge-Manager`, existing Python 3.14.8 / HA 2026.10.2:
 
 ```sh
 git status --short --branch
 git log -6 --oneline
-/workspace/ev-manager-venv/bin/python -m pytest
-/workspace/ev-manager-venv/bin/python -m pytest tests/test_price_consumer.py tests/test_history.py
+/workspace/ev-manager-venv/bin/python -m pytest --cov=custom_components.ev_charge_manager --cov-report=term
+/workspace/ev-manager-venv/bin/python -m pytest tests/test_price_consumer.py tests/test_measured_history.py tests/test_history.py tests/test_registry.py
 /workspace/ev-manager-venv/bin/ruff check custom_components tests
 /workspace/ev-manager-venv/bin/ruff format --check custom_components tests
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
+gh pr checks 13 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 14 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 
-Node.js 24 required for five original Node-RED parity cases (no skips). Remote HACS
-is authoritative; local full action container DNS limitation is known. Do not redo
-working setup/network troubleshooting. Producer docs-only example is validated with
-`python -m json.tool docs/contracts/example-response-v1.json`; no producer runtime,
-hassfest/HACS or real invoice tests exist/are claimed there.
+Node.js 24 is required for five real original Node-RED JavaScript parity cases;
+zero skips in the last full run. Do not reinstall working dependencies. Local full
+HACS container DNS is unavailable; actual remote HACS checks are the evidence.
+Producer docs-only validation: `python -m json.tool docs/contracts/example-response-v1.json`.
 
-## Checkpoint / safety
+## Checkpoint safety
 
-Update this same file with actual results and exact validated code hashes, commit,
-push and comment at meaningful milestones. Check remote CI for the exact head.
-No merge, stable release, deploy or production cutover. Original Node-RED remains
-byte-identical; no live HA/vehicle/charger commands. Consumer reads only proposed
-producer lookup; pricing reference tests mock sources. Future real commissioning
-remains per vehicle AND charger. Do not commit secrets or raw private invoices.
+Update this same handoff, commit/push coherent changes, comment meaningfully and
+check the exact head CI. A handoff cannot contain its own hash; use checkpoint
+subject and exact prior validated hashes. No production Node-RED changes, live
+HA/vehicle/charger commands, merge, stable release, deploy or cutover. Future real
+commissioning remains per vehicle AND charger. No secrets/raw private invoices in Git.

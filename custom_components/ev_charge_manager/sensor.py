@@ -2,7 +2,7 @@
 
 from dataclasses import asdict
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -27,6 +27,17 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 "expected_soc_at_0700",
             ):
                 entities.append(ManagerSensor(c, kind, site, vehicle["id"]))
+    entities.extend(
+        MeasuredSensor(c, v["id"], kind, site_id)
+        for site_id in c.sites
+        for v in c.registry.vehicles
+        for kind in ("energy_kwh", "cost", "unpriced_energy_kwh")
+    )
+    entities.extend(
+        MeasuredSensor(c, v["id"], "distance_km")
+        for v in c.registry.vehicles
+        if any(p.get("fields", {}).get("odometer") for p in v.get("providers", []))
+    )
     async_add_entities(entities)
 
 
@@ -227,4 +238,77 @@ class PriceSensor(CoordinatorEntity, SensorEntity):
             "current_dso_tariff_ex_vat": current_dso,
             "next_dso_change_at": next_change.isoformat() if next_change else None,
             "day_validation": self.coordinator.price_schedule.days.get(self.site["id"], {}),
+        }
+
+
+class MeasuredSensor(CoordinatorEntity, SensorEntity):
+    """Actual observed totals; never derived from planned allocations."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, coordinator, vehicle, kind, site=None):
+        super().__init__(coordinator)
+        self.vehicle, self.kind, self.site = vehicle, kind, site
+        labels = {
+            "energy_kwh": ("Measured charging energy", SensorDeviceClass.ENERGY, "kWh"),
+            "cost": ("Measured priced charging cost", SensorDeviceClass.MONETARY, "DKK"),
+            "unpriced_energy_kwh": (
+                "Unpriced measured charging energy",
+                SensorDeviceClass.ENERGY,
+                "kWh",
+            ),
+            "distance_km": ("Measured driven distance", SensorDeviceClass.DISTANCE, "km"),
+        }
+        name, device_class, unit = labels[kind]
+        self._attr_name = (site + " " if site else "") + name
+        self._attr_unique_id = (
+            f"{coordinator.entry.entry_id}_{vehicle}_{site or 'vehicle'}_history_{kind}"
+        )
+        self._attr_device_class = device_class
+        self._attr_native_unit_of_measurement = unit
+        self._attr_state_class = (
+            SensorStateClass.TOTAL if kind == "cost" else SensorStateClass.TOTAL_INCREASING
+        )
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, coordinator.entry.entry_id + "_" + vehicle)},
+            "name": next(v["name"] for v in coordinator.registry.vehicles if v["id"] == vehicle),
+            "manufacturer": "EV Charge Manager",
+            "model": "Read-only preview",
+        }
+
+    @property
+    def history(self):
+        if self.site is None:
+            return self.coordinator.distance_history.get(self.vehicle)
+        return self.coordinator.sites[self.site].history.get(self.vehicle)
+
+    @property
+    def available(self):
+        return super().available and self.history is not None
+
+    @property
+    def native_value(self):
+        return round(getattr(self.history, self.kind), 6) if self.history else None
+
+    @property
+    def extra_state_attributes(self):
+        history = self.history
+        return {
+            "schema_version": 1,
+            "basis": "measured_not_planned",
+            "site_id": self.site,
+            "vehicle_id": self.vehicle,
+            "unpriced_energy_kwh": history.unpriced_energy_kwh if history else None,
+            "cost_coverage": (
+                "partial"
+                if history.unpriced_energy_kwh
+                else "priced"
+                if history.energy_kwh
+                else "no_samples"
+            )
+            if history
+            else "unavailable",
+            "sampling_gap_limit_seconds": 180,
+            "restart_extrapolation": False,
         }

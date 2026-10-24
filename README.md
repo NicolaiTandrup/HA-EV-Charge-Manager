@@ -53,8 +53,9 @@ Add **EV Charge Manager** under Settings → Devices & services:
    select missing/ambiguous fields. No friendly-name or entity-suffix guessing.
    A provider device cannot belong to two logical vehicles.
 4. Add independent sites with exact tracker zone states and local timezones.
-   Choose either an official Nord Pool config entry or an existing timestamped
-   price sensor. Configure the complete tariff explicitly (see below).
+   For new sites choose the independent Price Engine entry/site. Its pricing
+   configuration belongs in that integration. Existing legacy price sites are
+   preserved only for explicit migration/reference comparisons.
 5. Add chargers using their actual physical connection/status sensor and device.
    The legacy Garage switch mapping is unverified and is never imported.
 6. Save. Configure options to edit items/provider fields or change module settings. Source
@@ -158,3 +159,9 @@ corrections replace future records. Unknown slots remain unavailable. See
 price-source switch is performed. See [refresh policy](docs/price-refresh.md),
 [verified source ADR](docs/adr-003-verified-danish-sources.md) and
 [dated pricing configuration](docs/dated-pricing.md).
+
+Measured EV history now exposes native site/vehicle energy, known priced cost,
+unpriced measured energy and one distance ledger per logical vehicle. Values come
+from new power/odometer reports, never planned allocations; see
+[measurement assumptions and coverage](docs/measured-history.md). Independent
+producer interoperability is still pending actual producer API implementation.

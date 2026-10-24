@@ -261,7 +261,9 @@ class Editor:
         if user_input:
             reg = er.async_get(self.hass)
             if any(
-                (e := reg.async_get(eid)) is None or e.device_id != self.provider["device"]
+                (e := reg.async_get(eid)) is None
+                or e.platform == DOMAIN
+                or e.device_id != self.provider["device"]
                 for eid in user_input.values()
             ):
                 errors["base"] = "invalid_mapping"
@@ -331,6 +333,9 @@ class Editor:
         if user_input:
             try:
                 ZoneInfo(user_input["timezone"])
+                producer = self.hass.config_entries.async_get_entry(user_input["producer_entry"])
+                if producer is None or producer.domain != "ha_energy_price_engine":
+                    raise ValueError("Select the authoritative Price Engine entry")
                 if any(
                     (s["id"] == user_input["id"] or s["zone_state"] == user_input["zone_state"])
                     and not self._is_editing("sites", s["id"])

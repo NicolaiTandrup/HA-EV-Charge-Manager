@@ -122,3 +122,13 @@ async def test_disabled_source_and_unregistered_legacy_mapping_fail_closed(hass,
     }
     hass.states.async_set("sensor.unregistered", "99")
     assert VehicleRegistry(hass, [other]).resolve(other, "soc", dt_util.utcnow()) is None
+
+
+async def test_ev_output_cannot_perpetuate_its_own_vehicle_source(hass, source):
+    vehicle, entity = source
+    output = er.async_get(hass).async_get_or_create(
+        "sensor", "ev_charge_manager", "derived_soc", device_id=vehicle["providers"][0]["device"]
+    )
+    hass.states.async_set(output.entity_id, "60")
+    vehicle["providers"][0]["fields"]["soc"] = output.entity_id
+    assert VehicleRegistry(hass, [vehicle]).resolve(vehicle, "soc", dt_util.utcnow()) is None

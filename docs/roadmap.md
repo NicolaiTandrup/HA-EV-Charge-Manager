@@ -1,3 +1,17 @@
+# Current continuation priorities
+
+Owner architecture update: independent HA-Energy-Price-Engine owns pricing.
+Embedded price modules and source fixtures below are frozen migration/reference.
+New consumer contract is in ADR 004 and docs/contracts/price-consumer-v1.md.
+Native measured history is implemented; see docs/measured-history.md for coverage
+and limitations. Latest evidence and next steps are in DEVELOPMENT_STATUS.md.
+
+Next priorities are producer API adoption/real interoperability, settled-price
+accounting/backfill, verified brand capability metadata and broader independent
+EV parity/safety coverage. No tariff subsystem expansion in this repository.
+
+## Historical preview roadmap (superseded where noted above)
+
 # Scope and follow-up gates
 
 This is the first read-only developer-preview slice for Issues #1–#4. Keep those

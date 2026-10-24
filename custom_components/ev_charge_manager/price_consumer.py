@@ -1,5 +1,6 @@
 """Versioned read-only consumer. No market fetching, fees, VAT or price storage."""
 
+from asyncio import Lock, timeout
 from datetime import timedelta
 from hashlib import sha256
 from math import isfinite
@@ -81,10 +82,19 @@ class PriceConsumer:
         self.keys = {}
         self.revisions = {}
         self.event_revisions = {}
+        self.locks = {}
 
     async def refresh(self, site, now, *, force=False):
+        async with self.locks.setdefault(site["id"], Lock()):
+            return await self._refresh(site, now, force=force)
+
+    async def _refresh(self, site, now, *, force=False):
         key = site["id"]
-        if not force and key in self.attempts and (now - self.attempts[key]).total_seconds() < 60:
+        if (
+            not force
+            and key in self.attempts
+            and 0 <= (now - self.attempts[key]).total_seconds() < 60
+        ):
             return False
         self.attempts[key] = now
         old = self.tables.get(key, ())
@@ -104,19 +114,20 @@ class PriceConsumer:
             end = utc(
                 (local + timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
             )
-            response = await self.hass.services.async_call(
-                DOMAIN,
-                "get_prices",
-                {
-                    "api_version": 1,
-                    "config_entry_id": producer,
-                    "site_id": site["producer_site"],
-                    "start": start.isoformat(),
-                    "end": end.isoformat(),
-                },
-                blocking=True,
-                return_response=True,
-            )
+            async with timeout(10):
+                response = await self.hass.services.async_call(
+                    DOMAIN,
+                    "get_prices",
+                    {
+                        "api_version": 1,
+                        "config_entry_id": producer,
+                        "site_id": site["producer_site"],
+                        "start": start.isoformat(),
+                        "end": end.isoformat(),
+                    },
+                    blocking=True,
+                    return_response=True,
+                )
             slots, verified = decode(
                 response,
                 producer,
@@ -142,7 +153,11 @@ class PriceConsumer:
         except (ValueError, TypeError, KeyError, HomeAssistantError, TimeoutError) as error:
             self.tables[key] = ()
             self.keys[key] = "unavailable"
-            self.status[key] = {"status": "ERROR", "reason": str(error), "api_version": 1}
+            self.status[key] = {
+                "status": "ERROR",
+                "reason": str(error) or type(error).__name__,
+                "api_version": 1,
+            }
         return old != self.tables[key]
 
     def slots(self, site, now):
@@ -160,6 +175,8 @@ class PriceConsumer:
                 "reason": "Price producer not loaded",
                 "api_version": 1,
             }
+            return ()
+        if self.status.get(site["id"], {}).get("status") == "ERROR":
             return ()
         verified = self.verified.get(site["id"])
         if verified is None or not 0 <= (now - verified).total_seconds() <= site.get(
