@@ -91,3 +91,11 @@ hassfest and HACS. Follow-up adds native producer-entry mapping and out-of-windo
 Optimizer-start regressions: **168 passed, no skips; 91% coverage**, Ruff/format and
 local official hassfest passed. Exact head `8def346` passed all six remote
 push/PR tests, hassfest and HACS checks.
+
+
+2026-10-24 producer API reconciliation supersedes earlier service-only limitations:
+actual producer draft #7 at `46b33bf50773082b6d942816c676dd098ee6bad1` is exported
+read-only for tests, reusing companion EV #15's contract test approach. Three new
+DST/site/readiness regressions failed first, then passed. Full local suite:
+176 passed, zero skipped, 91% coverage; Ruff check/format passed. No live upstream,
+hardware, invoice-file verification or production acceptance is claimed.

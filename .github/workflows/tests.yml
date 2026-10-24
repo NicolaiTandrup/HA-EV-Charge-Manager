@@ -9,6 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: NicolaiTandrup/HA-Energy-Price-Engine
+          ref: 46b33bf50773082b6d942816c676dd098ee6bad1
+          path: price-engine-reference
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14.8'
