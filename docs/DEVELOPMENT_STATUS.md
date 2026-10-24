@@ -20,11 +20,14 @@ not a runtime producer. Shared contract/example identical across repositories.
 JSON parses and its synthetic example is exercised by EV decoder tests; producer
 runtime/hassfest/HACS are unrun because no producer implementation exists.
 
-Active EV branch `feat/measured-ev-history`, based on #13. Checkpoint subject
-`Expose measured EV history with safe physical and price attribution`:
-**166 tests passed, zero skipped; 91% coverage**. Ruff/format and official local
-hassfest passed with zero invalid integrations. Open/check its separate draft PR
-based on `feat/authoritative-price-consumer` after push. Do not merge the stack.
+Active EV branch `feat/measured-ev-history`, draft **#14**, based on #13.
+Measured-history code `c38e915` passed **166 local tests** and all six exact-head
+remote push/PR tests, hassfest and HACS.
+Current follow-up subject `Validate producer mapping and require scheduled optimizer starts`:
+**168 tests passed, zero skipped; 91% coverage**; Ruff/format and official local
+hassfest passed with zero invalid integrations. Check its pushed exact head CI.
+It adds native producer-mapping validation and rejects Optimizer starts outside a
+current proposed allocation, including already-complete targets. Do not merge stack.
 
 ## Completed (do not repeat)
 
@@ -95,6 +98,7 @@ git log -6 --oneline
 /workspace/ev-manager-venv/bin/ruff format --check custom_components tests
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
 gh pr checks 13 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 14 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 

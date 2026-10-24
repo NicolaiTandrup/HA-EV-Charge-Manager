@@ -85,3 +85,8 @@ negative costs, logical-distance attribution, guest/site guards and consumer par
 No raw invoice files were available. The producer issue's 0.030 DKK/kWh ex-VAT
 June–September 2026 household statement is historical scoped evidence only, not a
 current contract/default or a raw-invoice conformance test.
+
+Measured-history `c38e915` passed 166 tests and all exact-head remote push/PR tests,
+hassfest and HACS. Follow-up adds native producer-entry mapping and out-of-window
+Optimizer-start regressions: **168 passed, no skips; 91% coverage**, Ruff/format and
+local official hassfest passed. Check follow-up exact-head remote checks.

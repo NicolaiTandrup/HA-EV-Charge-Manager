@@ -227,3 +227,30 @@ def test_negative_final_price_cost_is_credit_not_counter_reset():
     assert h.energy_kwh == pytest.approx(0.1)
     assert h.cost == pytest.approx(-0.1) and h.unpriced_energy_kwh == 0
     assert History(**h.persistent()).cost == h.cost
+
+
+async def test_optimizer_start_requires_current_proposed_allocation(hass):
+    config = model(hass)
+    hass.states.async_set("sensor.car_target", "60")
+    entry = MockConfigEntry(domain="ev_charge_manager", data=config)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    c = entry.runtime_data
+    assert c.data["forecasts"]["home"]["car"].status == "no_charge_required"
+    result = await hass.services.async_call(
+        "ev_charge_manager",
+        "simulate_command",
+        {
+            "charger": "charger",
+            "session_id": c.sessions.items["charger"].id,
+            "key": "no_window",
+            "owner": "optimizer",
+            "action": "start",
+        },
+        blocking=True,
+        return_response=True,
+    )
+    assert result["result"] == "unsafe_session"
+    assert c.commands.estimated_requests == 0
+    assert await hass.config_entries.async_unload(entry.entry_id)

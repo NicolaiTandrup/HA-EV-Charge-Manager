@@ -333,6 +333,9 @@ class Editor:
         if user_input:
             try:
                 ZoneInfo(user_input["timezone"])
+                producer = self.hass.config_entries.async_get_entry(user_input["producer_entry"])
+                if producer is None or producer.domain != "ha_energy_price_engine":
+                    raise ValueError("Select the authoritative Price Engine entry")
                 if any(
                     (s["id"] == user_input["id"] or s["zone_state"] == user_input["zone_state"])
                     and not self._is_editing("sites", s["id"])

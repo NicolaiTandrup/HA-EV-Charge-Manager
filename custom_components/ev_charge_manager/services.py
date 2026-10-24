@@ -69,6 +69,10 @@ def async_register(hass, coordinator):
         if intent.owner == "optimizer" and session and session.vehicle:
             optimizer_safe = any(
                 forecast.valid
+                and (
+                    intent.action != "start"
+                    or any(a.start <= now < a.end for a in forecast.allocations)
+                )
                 and forecast.updated_at
                 and 0 <= (now - forecast.updated_at).total_seconds() <= 2400
                 and coordinator.sites[site_id].site["zone_state"] == mapping["zone_state"]

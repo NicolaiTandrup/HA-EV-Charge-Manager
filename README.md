@@ -53,8 +53,9 @@ Add **EV Charge Manager** under Settings → Devices & services:
    select missing/ambiguous fields. No friendly-name or entity-suffix guessing.
    A provider device cannot belong to two logical vehicles.
 4. Add independent sites with exact tracker zone states and local timezones.
-   Choose either an official Nord Pool config entry or an existing timestamped
-   price sensor. Configure the complete tariff explicitly (see below).
+   For new sites choose the independent Price Engine entry/site. Its pricing
+   configuration belongs in that integration. Existing legacy price sites are
+   preserved only for explicit migration/reference comparisons.
 5. Add chargers using their actual physical connection/status sensor and device.
    The legacy Garage switch mapping is unverified and is never imported.
 6. Save. Configure options to edit items/provider fields or change module settings. Source

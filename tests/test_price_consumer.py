@@ -232,3 +232,33 @@ async def test_producer_error_preserves_reason_and_bounded_retry(hass):
     assert consumer.status["home"]["status"] == "ERROR"
     assert consumer.status["home"]["reason"] == "TimeoutError"
     producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
+
+
+async def test_native_site_configuration_contains_consumer_mapping_not_tariffs(hass):
+    from custom_components.ev_charge_manager.config_flow import defaults
+
+    producer = MockConfigEntry(domain=DOMAIN)
+    producer.add_to_hass(hass)
+    entry = MockConfigEntry(domain="ev_charge_manager", data=defaults())
+    entry.add_to_hass(hass)
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    fid = flow["flow_id"]
+    flow = await hass.config_entries.options.async_configure(fid, {"next_step_id": "site"})
+    assert flow["step_id"] == "site"
+    flow = await hass.config_entries.options.async_configure(
+        fid,
+        {
+            "id": "home",
+            "name": "Home",
+            "zone_state": "home",
+            "timezone": "Europe/Copenhagen",
+            "grid_kw": 11,
+            "producer_entry": producer.entry_id,
+            "producer_site": "producer-home",
+        },
+    )
+    assert flow["type"] == "menu"
+    await hass.config_entries.options.async_configure(fid, {"next_step_id": "finish"})
+    site = entry.options["sites"][0]
+    assert site["price_source"] == "energy_price_engine"
+    assert "tariff" not in site and "nordpool_entry" not in site
