@@ -56,3 +56,13 @@ At natural checkpoints, especially before stopping or approaching limits:
 
 If interrupted, leave recoverable work and clear status; the next session must
 reconstruct any missing checkpoint rather than blindly repeat commands.
+
+## Authoritative pricing boundary (owner decision, 2026-10-24)
+
+HA-Energy-Price-Engine owns price fetching, tariffs, VAT, scheduling and durable final
+price records. EV Charge Manager consumes the versioned read-only contract under
+`docs/contracts/`. Existing pricing modules/tests are frozen migration/reference
+code, not a permanent subsystem to expand. Do not add new supplier policies or
+invoice-derived defaults here. Household EWII invoices are historical evidence for
+that household/period only; never infer another site's or a later contract's rate.
+Preserve the existing migration path until an explicit owner-approved cutover.

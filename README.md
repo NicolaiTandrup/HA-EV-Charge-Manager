@@ -1,5 +1,14 @@
 # EV Charge Manager
 
+**Architecture update (2026-10-24):** [HA-Energy-Price-Engine](https://github.com/NicolaiTandrup/HA-Energy-Price-Engine)
+is the authoritative price producer. New sites select its config entry and site;
+EV consumes verified final prices through the [draft v1 contract](docs/contracts/price-consumer-v1.md).
+The producer API is not implemented yet; interoperability tests currently use mocks.
+Missing/stale producer data fails closed. Existing embedded pricing described below
+is retained as **frozen migration/reference code**, with no automatic cutover.
+See [ADR 004](docs/adr-004-independent-price-producer.md).
+
+
 A unified, modular native Home Assistant custom integration, domain
 `ev_charge_manager`. **Read-only developer preview, not a production controller.**
 Existing Node-RED flows remain the current production baseline. Installing this

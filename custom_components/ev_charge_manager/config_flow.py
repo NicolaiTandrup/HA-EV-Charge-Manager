@@ -48,6 +48,7 @@ class Editor:
                 "provider",
                 "manage_provider",
                 "site",
+                "legacy_site",
                 "charger",
                 "edit",
                 "remove",
@@ -321,6 +322,53 @@ class Editor:
         )
 
     async def async_step_site(self, user_input=None):
+        if getattr(self, "editing", None):
+            group, key = self.editing
+            old = next(i for i in self.config[group] if i["id"] == key)
+            if old.get("price_source") != "energy_price_engine":
+                return await self.async_step_legacy_site(user_input)
+        errors = {}
+        if user_input:
+            try:
+                ZoneInfo(user_input["timezone"])
+                if any(
+                    (s["id"] == user_input["id"] or s["zone_state"] == user_input["zone_state"])
+                    and not self._is_editing("sites", s["id"])
+                    for s in self.config["sites"]
+                ):
+                    raise ValueError("Duplicate site")
+                self._save_item(
+                    "sites",
+                    {**user_input, "price_source": "energy_price_engine", "currency": "DKK"},
+                )
+                return await self.async_step_menu()
+            except ValueError, KeyError:
+                errors["base"] = "invalid_mapping"
+        return self._show_item(
+            step_id="site",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("id"): vol.Match(r"^[a-z0-9_]+$"),
+                    vol.Required("name"): str,
+                    vol.Required("zone_state", default="home"): str,
+                    vol.Required("timezone", default="Europe/Copenhagen"): str,
+                    vol.Required("grid_kw", default=17.94): vol.All(
+                        vol.Coerce(float), vol.Range(min=0.1, max=1000)
+                    ),
+                    vol.Required("producer_entry"): selector.ConfigEntrySelector(
+                        selector.ConfigEntrySelectorConfig(integration="ha_energy_price_engine")
+                    ),
+                    vol.Required("producer_site"): str,
+                    vol.Required("price_max_age_seconds", default=129600): vol.All(
+                        vol.Coerce(int), vol.Range(min=60, max=172800)
+                    ),
+                    vol.Optional("guest_power_entity"): entity("sensor"),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_legacy_site(self, user_input=None):
         errors = {}
         if user_input:
             try:
@@ -365,7 +413,7 @@ class Editor:
             except ValueError, KeyError, TypeError:
                 errors["base"] = "invalid_mapping"
         return self._show_item(
-            step_id="site",
+            step_id="legacy_site",
             data_schema=vol.Schema(
                 {
                     vol.Required("id"): vol.Match(r"^[a-z0-9_]+$"),
