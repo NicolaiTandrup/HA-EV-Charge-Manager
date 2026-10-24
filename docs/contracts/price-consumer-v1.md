@@ -20,8 +20,12 @@ site_id, start/end, final_price_incl_vat, currency DKK, unit DKK/kWh, source/com
 JSON, calculated_at and its own revision. Older settled rows may have older revisions.
 Negative and explicit zero prices pass through unchanged. No VAT is added by EV.
 
-EV accepts only READY with exact contiguous range coverage. INCOMPLETE, STALE,
-ERROR and NOT_LOADED yield no usable scheduling prices; no legacy fallback occurs.
+EV accepts each local-date subrange only when READY with exact contiguous coverage.
+INCOMPLETE, STALE, ERROR and NOT_LOADED ranges contribute no prices; no legacy
+fallback occurs. A missing tomorrow range does not discard a verified today range.
+Aggregate status remains INCOMPLETE with explicit verified_ranges and reasons;
+this never promotes an incomplete producer result to READY. The existing planner
+may produce a conditional or complete plan using only those verified intervals.
 Producer controls operational readiness, including current/future date verification.
 EV additionally checks configured maximum verification age, nonfinite values,
 units, identity and monotonic site revisions. The selected loaded config entry's
@@ -55,3 +59,13 @@ PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/
 
 These are real producer API/ledger calls using synthetic inputs and temporary HA
 storage, not live hardware/source acceptance. Do not claim invoice verification.
+
+Offline fixture-only development when the producer checkout is unavailable:
+
+```sh
+/workspace/ev-manager-venv/bin/python -m pytest --ignore=tests/test_price_api_interop.py
+```
+
+That command intentionally does not run actual producer interop tests. Do not
+report them as passed. Synthetic response/malformed-contract fixtures remain local;
+actual cross-repository conformance requires the CI-pinned producer export.

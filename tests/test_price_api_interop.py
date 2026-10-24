@@ -71,4 +71,36 @@ async def test_real_producer_api_contract_dst_and_site_isolation(hass, monkeypat
     site["producer_site"] = "another_site"
     with pytest.raises(ValueError, match="ownership"):
         consumer.lookup(site, start, end, now)
+    site["producer_site"] = "producer_home"
+    await consumer.refresh(site, start + timedelta(hours=12))
+    # Real API: unavailable tomorrow is independent of verified today's range.
+    assert consumer.slots(site, start + timedelta(hours=12))
+    assert consumer.status["ev_home"]["status"] == "INCOMPLETE"
+    producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
+
+
+async def test_missing_producer_discovery_remains_bounded_and_does_not_install(hass):
+    from datetime import UTC, datetime
+    from unittest.mock import patch
+
+    producer = MockConfigEntry(domain="ha_energy_price_engine", data={"id": "home"})
+    producer.add_to_hass(hass)
+    producer.mock_state(hass, ConfigEntryState.LOADED)
+    consumer = PriceConsumer(hass)
+    site = {
+        "id": "home",
+        "producer_entry": producer.entry_id,
+        "producer_site": "home",
+        "timezone": "UTC",
+    }
+    now = datetime(2026, 10, 24, 12, tzinfo=UTC)
+    with patch(
+        "custom_components.ev_charge_manager.price_consumer.import_module",
+        side_effect=ImportError("Producer not installed"),
+    ) as module:
+        for _ in range(5):
+            await consumer.refresh(site, now)
+        assert module.call_count == 1
+        assert not consumer.slots(site, now)
+        assert "not installed" in consumer.status["home"]["reason"]
     producer.mock_state(hass, ConfigEntryState.NOT_LOADED)

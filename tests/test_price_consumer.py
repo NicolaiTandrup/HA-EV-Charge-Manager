@@ -140,29 +140,18 @@ async def test_native_consumer_no_embedded_producer_and_revision_event(hass, fre
         await hass.async_block_till_done()
         c = entry.runtime_data
         assert c.data["forecasts"]["home"]["car"].valid
-        assert len(calls) == 1
+        assert len(calls) == 2
         assert c.price_schedule.cancel is None
         embedded.assert_not_called()
         for _ in range(3):
             await c.async_refresh()
-        assert len(calls) == 1
+        assert len(calls) == 2
         hass.bus.async_fire(
             EVENT,
             {
                 "api_version": 1,
                 "producer_entry_id": producer.entry_id,
                 "site_id": "another",
-                "revision": 2,
-            },
-        )
-        await hass.async_block_till_done()
-        assert len(calls) == 1
-        hass.bus.async_fire(
-            EVENT,
-            {
-                "api_version": 1,
-                "producer_entry_id": producer.entry_id,
-                "site_id": "producer_home",
                 "revision": 2,
             },
         )
@@ -178,7 +167,18 @@ async def test_native_consumer_no_embedded_producer_and_revision_event(hass, fre
             },
         )
         await hass.async_block_till_done()
-        assert len(calls) == 2  # Duplicate pending revision is coalesced.
+        assert len(calls) == 4
+        hass.bus.async_fire(
+            EVENT,
+            {
+                "api_version": 1,
+                "producer_entry_id": producer.entry_id,
+                "site_id": "producer_home",
+                "revision": 2,
+            },
+        )
+        await hass.async_block_till_done()
+        assert len(calls) == 4  # Duplicate pending revision is coalesced.
         producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
         await c.async_refresh()  # Unload invalidates within the 60-second lookup throttle.
         assert not c.data["forecasts"]["home"]["car"].valid
@@ -325,4 +325,35 @@ async def test_public_api_revision_rollback_clears_usable_prices(hass):
         await consumer.refresh(site, NOW, force=True)
         assert not consumer.slots(site, NOW)
         assert "rollback" in consumer.status["home"]["reason"]
+    producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
+
+
+async def test_unpublished_tomorrow_does_not_discard_verified_today(hass):
+    from custom_components.ev_charge_manager.price_consumer import PriceConsumer
+
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "home"}, state=ConfigEntryState.LOADED)
+    producer.add_to_hass(hass)
+    site = {
+        "id": "home",
+        "producer_entry": producer.entry_id,
+        "producer_site": "home",
+        "timezone": "UTC",
+    }
+    consumer = PriceConsumer(hass)
+    midnight = NOW.replace(hour=0) + timedelta(days=1)
+
+    def lookup(site, start, end, **kwargs):
+        data = api_result(response(producer.entry_id, site, start, end, -0.25))
+        if end > midnight:
+            data.status = "INCOMPLETE"
+        return data
+
+    with patch("custom_components.ev_charge_manager.price_consumer.import_module") as module:
+        module.return_value.get_api.return_value.lookup.side_effect = lookup
+        await consumer.refresh(site, NOW)
+    slots = consumer.slots(site, NOW)
+    assert slots and slots[-1].end == midnight
+    assert all(slot.price == -0.25 for slot in slots)
+    assert consumer.status["home"]["status"] == "INCOMPLETE"
+    assert "INCOMPLETE" in consumer.status["home"]["reason"]
     producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
