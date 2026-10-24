@@ -77,6 +77,28 @@ def snapshot_health(fields, max_skew_seconds=120):
     }
 
 
+def provider_order(vehicle, direction, capability):
+    """Independent policy, with legacy READ order preserved until configured.
+
+    Missing explicitly preferred providers fail closed. Fallback is selection only,
+    never permission to retry an ambiguous write with another integration.
+    """
+    providers = vehicle.get("providers", [])
+    policy = vehicle.get("provider_policy", {})
+    preferred = policy.get(f"{direction}_overrides", {}).get(capability) or policy.get(
+        f"{direction}_provider"
+    )
+    if preferred:
+        primary = next((p for p in providers if p["id"] == preferred), None)
+        if primary is None:
+            return []
+        ordered = [primary, *(p for p in providers if p is not primary)]
+    else:
+        ordered = list(providers)
+    fallback = policy.get(f"{direction}_fallback", direction == "read")
+    return ordered if fallback else ordered[:1]
+
+
 class VehicleRegistry:
     def __init__(self, hass, vehicles, ttl=900, snapshot_skew_seconds=120):
         self.hass, self.vehicles, self.ttl = hass, vehicles, ttl
@@ -136,7 +158,7 @@ class VehicleRegistry:
 
     def resolve(self, vehicle, field, now):
         """A valid fresh primary off/zero wins over fallback on/nonzero."""
-        for provider in vehicle.get("providers", []):
+        for provider in provider_order(vehicle, "read", field):
             entity_id = self.source_entity(provider, field)
             state = self.hass.states.get(entity_id) if entity_id else None
             if state is None or not 0 <= (now - state.last_reported).total_seconds() <= self.ttl:

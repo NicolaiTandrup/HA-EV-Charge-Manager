@@ -47,6 +47,7 @@ class Editor:
                 "vehicle",
                 "provider",
                 "manage_provider",
+                "provider_policy",
                 "site",
                 "legacy_site",
                 "charger",
@@ -63,7 +64,7 @@ class Editor:
         editing = getattr(self, "editing", None)
         if editing and editing[0] == group:
             old = next(i for i in self.config[group] if i["id"] == editing[1])
-            data["id"] = old["id"]
+            data = {**old, **data, "id": old["id"]}
             if group == "vehicles":
                 data["providers"] = old["providers"]
             self.config[group] = [data if i["id"] == old["id"] else i for i in self.config[group]]
@@ -192,6 +193,70 @@ class Editor:
                 }
             ),
         )
+
+    async def async_step_provider_policy(self, user_input=None):
+        choices = {v["id"]: v["name"] for v in self.config["vehicles"] if v["providers"]}
+        if not choices:
+            return self.async_abort(reason="no_providers")
+        if user_input:
+            self.policy_vehicle = next(
+                v for v in self.config["vehicles"] if v["id"] == user_input["vehicle"]
+            )
+            return await self.async_step_policy()
+        return self.async_show_form(
+            step_id="provider_policy",
+            data_schema=vol.Schema({vol.Required("vehicle"): vol.In(choices)}),
+        )
+
+    async def async_step_policy(self, user_input=None):
+        vehicle = self.policy_vehicle
+        choices = [p["id"] for p in vehicle["providers"]]
+        old = vehicle.get("provider_policy", {})
+        if user_input:
+            vehicle["provider_policy"] = {
+                **{
+                    k: user_input[k]
+                    for k in ("read_provider", "write_provider", "read_fallback", "write_fallback")
+                },
+                **{
+                    f"{direction}_overrides": {
+                        key.removeprefix(f"{direction}_"): value
+                        for key, value in user_input.items()
+                        if key.startswith(f"{direction}_")
+                        and key not in {f"{direction}_provider", f"{direction}_fallback"}
+                        and value != "__default__"
+                    }
+                    for direction in ("read", "write")
+                },
+            }
+            return await self.async_step_menu()
+        schema = {}
+        for direction in ("read", "write"):
+            selected = old.get(f"{direction}_provider", choices[0])
+            schema[
+                vol.Required(
+                    f"{direction}_provider", default=selected if selected in choices else choices[0]
+                )
+            ] = vol.In(choices)
+            schema[
+                vol.Required(
+                    f"{direction}_fallback",
+                    default=old.get(f"{direction}_fallback", direction == "read"),
+                )
+            ] = bool
+            for capability in (
+                sorted(FIELDS)
+                if direction == "read"
+                else ("start", "stop", "limit", "current", "enable", "disable")
+            ):
+                selected = old.get(f"{direction}_overrides", {}).get(capability, "__default__")
+                schema[
+                    vol.Optional(
+                        f"{direction}_{capability}",
+                        default=selected if selected in choices else "__default__",
+                    )
+                ] = vol.In(["__default__", *choices])
+        return self.async_show_form(step_id="policy", data_schema=vol.Schema(schema))
 
     async def async_step_manage_provider(self, user_input=None):
         choices = {
@@ -472,7 +537,13 @@ class Editor:
         if user_input:
             source = er.async_get(self.hass).async_get(user_input["status"])
             if (
-                not source
+                any(
+                    c.get("device") == user_input["device"]
+                    and not self._is_editing("chargers", c["id"])
+                    for c in self.config["chargers"]
+                )
+                or not source
+                or source.platform == DOMAIN
                 or source.device_id != user_input["device"]
                 or user_input["id"]
                 in {

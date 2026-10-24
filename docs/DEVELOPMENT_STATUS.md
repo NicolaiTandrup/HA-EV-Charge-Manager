@@ -25,20 +25,23 @@ Measured-history draft **#14**, `feat/measured-ev-history`, last handoff `e6dcbc
 code `8def346`: **168 tests passed, zero skipped, 91% coverage**, Ruff/format,
 official local hassfest and all six exact-head remote push/PR checks passed.
 
-Active reconciliation branch `feat/reconcile-price-api-v1`, based on #14. Checkpoint
-subject `Reconcile measured EV consumer with producer-owned API v1`:
-**176 tests passed, zero skipped, 91% coverage**; Ruff/format passed. Official local
-hassfest passed (1 integration, 0 invalid). Code committed at `1fb09e2`.
-**Push blocked:** GitHub credentials expired (`could not read Username`; API HTTP
-401 Bad credentials). No reconciliation PR was created, no new remote CI ran, and
-correction comments could not be posted. Branch and all work are local/committed.
-Restore authentication, push and create a draft based on #14 before further changes.
-Producer docs-only PR #6 branch has a separate local correction commit marking
-its service proposal superseded by #7; push that correction too.
-Three actual producer DST regressions failed before the fix (missing public lookup),
-then passed. Tests use a pinned isolated producer export, no live sources or hardware.
-This checkpoint preserves all measured-history work while replacing the obsolete
-service transport/event with actual API v1 and verified durable entry/site ownership.
+Reconciliation draft **#16** is now published, branch `feat/reconcile-price-api-v1`,
+head `23bf84b`, code `1fb09e2`. **176 tests, zero skipped, 91% coverage** plus
+Ruff/format/local official hassfest passed. All six exact-head remote push/PR tests,
+hassfest and HACS checks passed. GitHub authentication has recovered. Producer
+proposal correction `edd4361` was pushed; correction comments posted on EV #14
+and producer #6. No existing PR was merged or branch overwritten.
+
+Active branch `feat/native-provider-policies`, based on #16. Checkpoint subject
+`Configure independent provider policies and validate arbitrary native fleets`:
+**183 local tests passed, zero skipped, 92% coverage**, Ruff/format passed.
+Native regression tests failed first for missing independent policy and duplicate
+charger ownership, then passed. Tests cover first setup with 0/1/2/6 vehicles and
+chargers and subsequent edit/remove, retaining logical identity. READ/WRITE primary,
+independent fallback and per-field/capability overrides use ordinary forms. Explicit
+missing preferred providers fail closed. No control enablement was added.
+Official local hassfest passed (1 integration, 0 invalid); new remote checks
+pending push. No skipped tests, live commands or production modifications.
 
 ## Completed (do not repeat)
 
@@ -95,22 +98,14 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Restore GitHub authentication, then run:
-
-```sh
-git push -u origin feat/reconcile-price-api-v1
-gh pr create --repo NicolaiTandrup/HA-EV-Charge-Manager --base feat/measured-ev-history --head feat/reconcile-price-api-v1 --draft --title "Reconcile measured EV consumer with producer-owned API v1" --body-file /tmp/ev-api-pr.md
-```
-
-Reconstruct the PR body from this handoff if the temporary file is gone. Update
-EV #13/#14/#15 and producer #6/#7/Issue #5 with the supersession/interop evidence.
-Push producer docs correction on `docs/ev-consumer-contract-v1` as well. Never merge.
-Check exact-head remote tests/hassfest/HACS, then scope consumer queries to actual planning
-needs and separate current measured-cost lookup. Reuse real producer pinned tests,
-including today's usable range before next-day publication and cross-midnight/DST
-vehicle deadlines. Independent follow-ups: settled-history backfill, verified brand
-capability metadata and broader parity fixtures; no live commands. Preserve #14's
-history/site/guest safeguards and #15's actual producer contract. Do not repeat ports.
+Complete policy checkpoint validation, commit/push as a separate draft based on
+#16. Next add a dormant, explicitly injected/mock-tested Command Executor using
+recorded Node-RED switch/number service semantics. No executor is wired into live
+startup/services and no live transport is enabled. Add capability diagnostics and
+safe uncertain-ack/idempotency tests, then deadline-scoped price consumption,
+charger discovery/rename ownership and dated measured-history totals. Document
+atomic owner-approved migration with offline fixtures (no simultaneous legacy/new
+Nord Pool requirement). Preserve all prior tests and production baselines.
 
 ## Exact validation commands
 
