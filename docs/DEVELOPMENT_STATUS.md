@@ -28,7 +28,13 @@ official local hassfest and all six exact-head remote push/PR checks passed.
 Active reconciliation branch `feat/reconcile-price-api-v1`, based on #14. Checkpoint
 subject `Reconcile measured EV consumer with producer-owned API v1`:
 **176 tests passed, zero skipped, 91% coverage**; Ruff/format passed. Official local
-hassfest passed (1 integration, 0 invalid). Remote checks pending first push.
+hassfest passed (1 integration, 0 invalid). Code committed at `1fb09e2`.
+**Push blocked:** GitHub credentials expired (`could not read Username`; API HTTP
+401 Bad credentials). No reconciliation PR was created, no new remote CI ran, and
+correction comments could not be posted. Branch and all work are local/committed.
+Restore authentication, push and create a draft based on #14 before further changes.
+Producer docs-only PR #6 branch has a separate local correction commit marking
+its service proposal superseded by #7; push that correction too.
 Three actual producer DST regressions failed before the fix (missing public lookup),
 then passed. Tests use a pinned isolated producer export, no live sources or hardware.
 This checkpoint preserves all measured-history work while replacing the obsolete
@@ -89,7 +95,17 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Complete reconciliation draft CI, then scope consumer queries to actual planning
+Restore GitHub authentication, then run:
+
+```sh
+git push -u origin feat/reconcile-price-api-v1
+gh pr create --repo NicolaiTandrup/HA-EV-Charge-Manager --base feat/measured-ev-history --head feat/reconcile-price-api-v1 --draft --title "Reconcile measured EV consumer with producer-owned API v1" --body-file /tmp/ev-api-pr.md
+```
+
+Reconstruct the PR body from this handoff if the temporary file is gone. Update
+EV #13/#14/#15 and producer #6/#7/Issue #5 with the supersession/interop evidence.
+Push producer docs correction on `docs/ev-consumer-contract-v1` as well. Never merge.
+Check exact-head remote tests/hassfest/HACS, then scope consumer queries to actual planning
 needs and separate current measured-cost lookup. Reuse real producer pinned tests,
 including today's usable range before next-day publication and cross-midnight/DST
 vehicle deadlines. Independent follow-ups: settled-history backfill, verified brand

@@ -2,8 +2,9 @@
 
 **Architecture update (2026-10-24):** [HA-Energy-Price-Engine](https://github.com/NicolaiTandrup/HA-Energy-Price-Engine)
 is the authoritative price producer. New sites select its config entry and site;
-EV consumes verified final prices through the [draft v1 contract](docs/contracts/price-consumer-v1.md).
-The producer API is not implemented yet; interoperability tests currently use mocks.
+EV consumes verified final prices through the [producer-owned API v1](docs/contracts/price-consumer-v1.md).
+Producer draft #7 implements that API; tests exercise its pinned ledger/API with
+synthetic inputs, alongside mocked failure cases. Hardware acceptance remains unrun.
 Missing/stale producer data fails closed. Existing embedded pricing described below
 is retained as **frozen migration/reference code**, with no automatic cutover.
 See [ADR 004](docs/adr-004-independent-price-producer.md).
