@@ -62,7 +62,7 @@
       },
       "site": {
         "title": "Site and all-in prices",
-        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent. Select a standalone Price Engine site ID without a legacy price entity or Nord Pool entry to use read-only API v1. All pricing, tariffs and refresh then belong exclusively to Price Engine; legacy tariff fields are not applied. No production cutover is automatic.",
         "data": {
           "id": "Id",
           "name": "Name",
@@ -88,7 +88,8 @@
           "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
           "heating_registered": "Owner confirms registered electric heating",
           "annual_usage_kwh": "Verified annual usage (kWh)",
-          "usage_year": "Annual usage year"
+          "usage_year": "Annual usage year",
+          "price_engine_site": "Standalone Price Engine site ID (optional; exclusive price source)"
         }
       },
       "charger": {
@@ -210,7 +211,7 @@
       },
       "site": {
         "title": "Site and all-in prices",
-        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent. Select a standalone Price Engine site ID without a legacy price entity or Nord Pool entry to use read-only API v1. All pricing, tariffs and refresh then belong exclusively to Price Engine; legacy tariff fields are not applied. No production cutover is automatic.",
         "data": {
           "id": "Id",
           "name": "Name",
@@ -236,7 +237,8 @@
           "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
           "heating_registered": "Owner confirms registered electric heating",
           "annual_usage_kwh": "Verified annual usage (kWh)",
-          "usage_year": "Annual usage year"
+          "usage_year": "Annual usage year",
+          "price_engine_site": "Standalone Price Engine site ID (optional; exclusive price source)"
         }
       },
       "charger": {

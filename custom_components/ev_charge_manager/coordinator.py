@@ -16,7 +16,8 @@ from .brain import DISCONNECTED, Brain, Reading, normalize
 from .command import CommandManager
 from .const import DOMAIN
 from .optimizer import OptimizerCoordinator
-from .price_engine import PriceEngine
+from .price_consumer import REVISION_EVENT, PriceConsumer
+from .price_engine import PriceEngine, day_bounds
 from .price_schedule import PriceSchedule
 from .price_update import PriceUpdater
 from .sessions import Sessions
@@ -68,6 +69,8 @@ class SiteOptimizer(OptimizerCoordinator):
         return dict(self.cached_plan)
 
     def _prices(self, now):
+        if self.price_slots is None:
+            raise ValueError("Standalone Price Engine prices are not ready")
         return self.price_slots
 
     def _state(self, entity_id, now):
@@ -133,6 +136,8 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.sessions = Sessions()
         self.price_engine = PriceEngine(hass, entry.entry_id)
         self.price_updater = PriceUpdater(hass, self.price_engine)
+        self.price_consumer = PriceConsumer(hass)
+        self.consumer_status = {}
         self.price_schedule = PriceSchedule(self)
         vehicles = [
             {
@@ -177,7 +182,8 @@ class ManagerCoordinator(DataUpdateCoordinator):
     async def async_refresh_prices(self):
         now = dt_util.utcnow()
         for site in self.sites.values():
-            await self.price_updater.refresh(site.site, now)
+            if not site.site.get("price_engine_site"):
+                await self.price_updater.refresh(site.site, now)
 
     async def _price_changed(self):
         await self.async_refresh_prices()
@@ -201,10 +207,27 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     @callback
     def async_listen(self):
-        self.price_schedule.listen()
+        if any(not s.site.get("price_engine_site") for s in self.sites.values()):
+            self.price_schedule.listen()
+        self.entry.async_on_unload(
+            self.hass.bus.async_listen(REVISION_EVENT, self._producer_changed)
+        )
         self.entry.async_on_unload(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._changed))
         self.entry.async_on_unload(
             self.hass.bus.async_listen(er.EVENT_ENTITY_REGISTRY_UPDATED, self._registry_changed)
+        )
+
+    @callback
+    def _producer_changed(self, event):
+        if event.data.get("api_version") != 1:
+            return
+        if event.data.get("site_id") not in {
+            s.site.get("price_engine_site") for s in self.sites.values()
+        }:
+            return
+        self.price_consumer.invalidate_discovery()
+        self.entry.async_create_task(
+            self.hass, self.async_request_refresh(), "Read revised producer prices"
         )
 
     @callback
@@ -338,17 +361,33 @@ class ManagerCoordinator(DataUpdateCoordinator):
                     site.config["grid_kw"] = max(0, site.site["grid_kw"] - power)
             except ValueError, TypeError, KeyError:
                 site.config["grid_kw"] = 0
-            site.price_key = self.price_engine.price_keys.get(key)
-            site.price_slots = self.price_engine.slots(
-                key, now - timedelta(minutes=3), now + timedelta(days=3)
-            )
+            if producer_site := site.site.get("price_engine_site"):
+                from zoneinfo import ZoneInfo
+
+                start = now.replace(minute=(now.minute // 15) * 15, second=0, microsecond=0)
+                today = now.astimezone(ZoneInfo(site.site["timezone"])).date()
+                _, end = day_bounds(today + timedelta(days=1), site.site["timezone"])
+                result = self.price_consumer.lookup(producer_site, start, end, now)
+                self.consumer_status[key] = {
+                    "status": result.status,
+                    "reason": result.reason,
+                    "last_success": result.last_success,
+                    "revision": result.revision,
+                }
+                site.price_slots = result.slots if result.status == "READY" else None
+                site.price_key = (producer_site, result.revision, result.status)
+            else:
+                site.price_key = self.price_engine.price_keys.get(key)
+                site.price_slots = self.price_engine.slots(
+                    key, now - timedelta(minutes=3), now + timedelta(days=3)
+                )
             forecasts[key] = await site._async_update_data()
         saved = self.sessions.persistent()
         self.store.async_delay_save(lambda: saved, 1)
         return {
             "vehicles": snapshots,
             "vehicle_health": self.registry.assess(snapshots),
-            "price_status": self.price_updater.status,
+            "price_status": {**self.price_updater.status, **self.consumer_status},
             "assignments": rows,
             "sessions": session_rows,
             "forecasts": forecasts,

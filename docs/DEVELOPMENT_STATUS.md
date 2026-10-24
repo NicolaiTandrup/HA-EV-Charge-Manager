@@ -1,6 +1,54 @@
 # Development handoff
 
-Updated 2026-10-23. Canonical continuation file; read AGENTS.md first.
+Updated 2026-10-24. Canonical continuation file; read AGENTS.md first.
+
+## Active standalone consumer checkpoint (2026-10-24)
+
+Branch: `feat/price-engine-consumer`, based on PR #12 head
+`9d949c6d0905646d1bbf973ea2edb47846e1607d`. This is a separate draft stack
+extension; no existing PR #11/#12 branch is changed or merged.
+Validated code: `088c8fad00a0eb79fec246e35637d26655e1eb1c`.
+Checkpoint subject: `docs: record green consumer CI and producer handoff`.
+Draft: https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/15.
+Producer: https://github.com/NicolaiTandrup/HA-Energy-Price-Engine/pull/7.
+Producer code `e36e3e455b85a81fe2cf099a08ba4f6c8de37f49`: **78 passed, zero
+skips, 92% coverage**, all six exact-head remote tests/hassfest/HACS passed.
+
+Completed: immutable API v1 final-price adapter; explicit native per-site
+`price_engine_site` selection exclusive of legacy price entity/Nord Pool source;
+producer-only retrieval/calculation/storage/publishing; skip local source schedules
+and price sensors for external sites; future revision event subscription; bounded
+discovery backoff; fail-closed invalid/missing/stale/unloaded/cross-site/incorrect-unit
+responses. Existing 30-minute optimizer cadence and earliest-slot tie-break untouched.
+No existing site migrates automatically. Other legacy simulation sites retain their
+reviewed PR #11/#12 code until separately migrated.
+
+Local validation with locked producer `.venv` Python 3.14.8 and Node 24:
+`PRICE_ENGINE_SOURCE=/workspace/HA-Energy-Price-Engine python -m pytest
+--cov=custom_components.ev_charge_manager`: **153 passed, zero skips, 91% coverage**.
+Ruff check and format pass. The focused consumer module has 98% coverage.
+Cross-repository tests exercise the real producer API/HA Store on 92/96/100-slot
+DST days, site isolation and stale handling. CI checks out producer exact commit
+`f36250715eb3ec2e8a47424a780943192c96a634`; local producer has further equivalent
+hardening. Native HA lifecycle tests prove no consumer fetch/calculation and stale
+prices invalidate forecasts rather than retaining a valid cached plan.
+
+All SIX exact-head remote push/PR checks passed at consumer code `088c8fa`: tests,
+hassfest and HACS. Official local hassfest: one integration, zero invalid. This
+handoff-only checkpoint changes no validated application code. Its own final SHA
+cannot be recorded in this document; inspect Git and current PR checks.
+
+Next: review PR #15 separately from producer #7 and the original unmerged stack;
+retain explicit source selection and no automatic production migration.
+Read-only owner broker exports still needed for actual household/summer-house parity.
+The conservative consumer requests current quarter through next local-day end, so
+it defers new planning while next-day prices are incomplete. No silent fallback.
+See docs/price-engine-consumer.md for contract/test setup and limitations.
+
+No Node-RED baseline, live HA, vehicle/charger control, stable release, merge or
+production cutover changes. Continue with PR/CI evidence and update this same handoff.
+
+## Previous tested PR #12 context (retained for provenance)
 
 ## Git / PR stack
 
