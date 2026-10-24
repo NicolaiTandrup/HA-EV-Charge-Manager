@@ -76,6 +76,8 @@ class PriceSchedule:
         now = dt_util.utcnow()
         for optimizer in self.coordinator.sites.values():
             site = optimizer.site
+            if site.get("price_engine_site"):
+                continue  # The standalone producer exclusively owns refresh and pricing.
             today = now.astimezone(ZONE).date()
             # Always verify current day; also reconcile known/missing next day.
             for day in (today, today + timedelta(days=1)):
@@ -86,6 +88,8 @@ class PriceSchedule:
         today = now.astimezone(ZONE).date()
         for optimizer in self.coordinator.sites.values():
             site = optimizer.site
+            if site.get("price_engine_site"):
+                continue  # The standalone producer exclusively owns refresh and pricing.
             day = today if (hour, minute) == (0, 1) else today + timedelta(days=1)
             unconditional = (hour, minute) in {(0, 1), (13, 5)}
             if unconditional or not self.complete(site, day):

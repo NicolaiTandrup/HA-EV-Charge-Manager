@@ -333,6 +333,17 @@ class Editor:
                     if not self._is_editing("sites", s["id"])
                 }:
                     raise ValueError("Duplicate site or zone")
+                if user_input.get("price_engine_site"):
+                    if user_input.get("nordpool_entry") or user_input.get("price_entity"):
+                        raise ValueError(
+                            "Select the independent producer without a legacy price source"
+                        )
+                    # Producer final values are authoritative; ordinary tariff UI
+                    # fields do not participate in this explicit read-only mode.
+                    self._save_item(
+                        "sites", {**user_input, "tariff": {"mode": "all_in"}, "currency": "DKK"}
+                    )
+                    return await self.async_step_menu()
                 if bool(user_input.get("nordpool_entry")) == bool(user_input.get("price_entity")):
                     raise ValueError("Select exactly one price source")
                 if user_input.get("nordpool_entry") and user_input["price_basis"] != "spot_ex_vat":
@@ -375,6 +386,7 @@ class Editor:
                     vol.Required("grid_kw", default=17.94): vol.All(
                         vol.Coerce(float), vol.Range(min=0.1, max=1000)
                     ),
+                    vol.Optional("price_engine_site"): vol.Match(r"^[a-z0-9][a-z0-9_]{0,63}$"),
                     vol.Optional("nordpool_entry"): selector.ConfigEntrySelector(
                         selector.ConfigEntrySelectorConfig(integration="nordpool")
                     ),

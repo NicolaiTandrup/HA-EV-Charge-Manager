@@ -15,6 +15,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities.extend(
         PriceSensor(c, site.site, kind)
         for site in c.sites.values()
+        if not site.site.get("price_engine_site")
         for kind in ("current_price", "next_price", "price_status")
     )
     for site in c.sites:
