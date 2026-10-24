@@ -241,7 +241,16 @@ class ManagerCoordinator(DataUpdateCoordinator):
         for site in self.sites.values():
             if site.site.get("price_source") == "energy_price_engine":
                 await self.price_consumer.refresh(site.site, dt_util.utcnow())
-        self.sessions = Sessions(await self.store.async_load())
+        saved_sessions = await self.store.async_load() or {}
+        charger_ids = {c["id"] for c in self.config.get("chargers", [])}
+        self.sessions = Sessions(
+            {key: value for key, value in saved_sessions.items() if key in charger_ids}
+        )
+        vehicle_ids = {v["id"] for v in self.registry.vehicles}
+        for session in self.sessions.items.values():
+            if session.vehicle not in vehicle_ids:
+                session.vehicle = None
+                session.authorized = False
         for site in self.sites.values():
             await site.async_load()
 
@@ -399,6 +408,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
                 row.get("car") if row.get("valid") else None,
                 now=now,
                 reported_at=reading.reported_at if reading else None,
+                source_device=charger.get("device"),
             )
             session_rows[charger["id"]] = {
                 "session_id": session.id if session else None,

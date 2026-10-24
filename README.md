@@ -21,6 +21,9 @@ and is not wired to startup or public services.
 Native [provider policies](docs/provider-policies.md) support independent READ/WRITE
 preferences, fallback switches and capability overrides. All controls stay disabled.
 
+See [candidate installation](docs/beta-installation.md) and
+[owner-supervised migration/rollback](docs/beta-cutover.md) for beta gates.
+
 ## Four components
 
 - **Vehicle Manager:** one stable logical identity per physical vehicle, linked to

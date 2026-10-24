@@ -99,3 +99,25 @@ read-only for tests, reusing companion EV #15's contract test approach. Three ne
 DST/site/readiness regressions failed first, then passed. Full local suite:
 176 passed, zero skipped, 91% coverage; Ruff check/format passed. No live upstream,
 hardware, invoice-file verification or production acceptance is claimed.
+
+## Overnight beta candidate checkpoints (2026-10-24)
+
+Reconciliation #16 (176 tests), native policies #17 (183), dormant executor #18
+(191), verified price ranges #19 (193), charger registry #20 (196) and calendar
+history #21 (200) each passed local Ruff/format, official hassfest and all six
+exact-head remote push/PR tests/hassfest/HACS checks. Producer API tests pin real
+producer #7 `46b33bf50773082b6d942816c676dd098ee6bad1`.
+
+Final beta-readiness code: 210 local tests passed, zero skipped, 92% integration
+coverage. Ruff/format includes scripts. Official local hassfest: one integration,
+zero invalid. Includes real HA lifecycle tests for zero/one/two/six concurrent
+vehicles, chargers and sites, Options removal with history preservation, physical
+charger replacement authority, exact registry VIN duplicate/conflict guards, native
+capability review, observed-only calendar totals and offline export comparison.
+Beta-readiness code `2aba16f` passed all six exact-head remote push/PR tests,
+hassfest and HACS checks. DEVELOPMENT_STATUS.md records the handoff checkpoint.
+
+No installed HA OS/hardware acceptance or full household broker/invoice parity is
+claimed. Missing full broker export and raw recorded household inputs are explicit.
+Legacy exports' SHA-256 hashes are unchanged. No live commands, merge, prerelease,
+production HA/Node-RED changes or cutover occurred.
