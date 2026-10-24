@@ -15,6 +15,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities.extend(
         PriceSensor(c, site.site, kind)
         for site in c.sites.values()
+        if site.site.get("price_source") != "energy_price_engine"
         for kind in ("current_price", "next_price", "price_status")
     )
     for site in c.sites:
@@ -120,6 +121,7 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
                 optimizer_enabled=self.coordinator.config.get("optimizer_enabled", True),
                 simulated_requests=self.coordinator.commands.estimated_requests,
                 simulation_trace=self.coordinator.commands.trace,
+                price_consumers=data.get("price_status", {}),
             )
         elif self.forecast:
             f = self.forecast

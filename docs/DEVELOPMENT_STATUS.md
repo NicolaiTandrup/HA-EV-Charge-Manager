@@ -1,127 +1,89 @@
 # Development handoff
 
-Updated 2026-10-23. Canonical continuation file; read AGENTS.md first.
+Updated 2026-10-24. Read AGENTS.md, current issues/PRs and Git state first.
 
-## Git / PR stack
+## Architecture / current branch
 
-- Owner restart point: `4051ec0` on `feat/unified-read-only-integration` (PR #6).
-- PR #5: architecture baseline `feat/unified-architecture`, unchanged/unmerged.
-- PR #6: `feat/unified-read-only-integration`, now `f488748` (Issue #2 rename and
-  provider-management work). Remote push/PR tests, hassfest and HACS all passed.
-- PR #11: `feat/persistent-price-engine`, head `5c32dc9`, based on PR #6. Persistent
-  Price Engine (#9) and scheduled refresh (#10). Remote push/PR tests, hassfest and
-  HACS all passed at `d1c66b7` and `5c32dc9`.
-- Active: `feat/verified-danish-pricing`, based on PR #11. Initial source/component
-  checkpoint `b9ce79a` passed remote push tests/hassfest/HACS. Hardening checkpoint `afe2e88` passed local **137 tests, zero skips**, Ruff/format,
-  official hassfest and all remote push/PR tests, hassfest and HACS.
-- Current checkpoint `Align tariff cache with morning publication verification`:
-  validated at `6f972a554920ccd958ba4a77ccfa2147fd4c5b3f`: **138 passed, zero
-  skips; 91% coverage**, Ruff/format and official local hassfest passed. All SIX
-  exact-head remote push/PR checks passed: tests, hassfest and HACS. It prevents
-  midnight cache reads consuming afternoon verification of morning source updates.
-  The following handoff-only commit records these results; substantive code is unchanged.
-- Source/component draft PR #12 (https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/12) is open from the active branch to
-  `feat/persistent-price-engine`. Stack: #5 → #6 → #11 → #12. All remain drafts;
-  do not merge the stack.
+Owner decision: **HA-Energy-Price-Engine is authoritative**. EV consumes final prices;
+embedded pricing is frozen migration/reference. No further tariff/source/VAT/price
+ledger/scheduling business development belongs here. See ADR 004 and shared draft
+contract v1. Do not repeat the previous pricing implementation or invoice question.
 
-## Completed (do not repeat)
+Active branch `feat/authoritative-price-consumer`, based on `feat/verified-danish-pricing`
+checkpoint `9d949c6`. Existing draft stack #5 → #6 → #11 → #12 stays unmerged.
+New consumer draft should target #12's branch. Producer contract proposal is
+[HA-Energy-Price-Engine PR #6](https://github.com/NicolaiTandrup/HA-Energy-Price-Engine/pull/6),
+commit `76fa1ab`, branch `docs/ev-consumer-contract-v1` based on its main.
 
-- Original port/architecture/snapshot safety and permanent handoff workflow.
-- Issue #2 rename: four regression failures reproduced first. Stable registry IDs
-  persist through live/offline rename; every field read verifies registry identity,
-  expected device ownership, enabled state and unique logical owner. Deleted IDs
-  never rebind by old entity name. Internal reconciliations do not reset sessions.
-  Invalid/unregistered legacy mappings require explicit reviewed remapping.
-- Issue #2 UI: promote/reorder/remove providers and replace devices via reviewed
-  mappings without changing logical vehicle UUID/provider ID; edits retain order.
-- #9: atomic per-site HA Store tables, immutable records and indexed lookup-only
-  consumers, 365-day history retention, future-only verified corrections,
-  unchanged-update signatures, source/component/VAT conventions. Store/restart,
-  failed writes, concurrency, history and 92/96/100-slot DST tests pass.
-- #10: Copenhagen 13:05 publication; conditional 13:20/13:40 retries and 23:59
-  rescue; unconditional 00:01 current-day sync. Startup verifies current/next day.
-  Partial corrected publications never mix with an old complete table and become
-  READY. Separate persisted operational metadata records requested date, actual
-  source/stored/expected counts, last success/attempt, reason and status.
-- Pricing reads never fetch or compose. A changed price requests one refresh;
-  unchanged watchdogs reuse plans until a 30-minute regular tick or relevant input,
-  price, allocation boundary or deadline change. History/freshness remains separate.
-- #7 actual Radius C availability verified from public API and metadata; official
-  Radius app confirms ex-VAT display conversion. GLN 5790000705689, D03/DT_C_01,
-  PT1H. Actual rows retained as fixtures. Native optional daily cached adapter,
-  local-hour/effective/DST rules, outage backoff, stale warnings, explicit manual
-  fallback. No fuzzy product match or VATClass inference. Diagnostics expose
-  current DSO amount, next change, provenance and daily verification counts.
-- #8: dated/verified component schema, per-component VAT/unit normalization,
-  effective periods, locked overrides, explicit registered-heating/usage policy,
-  subscription separation. Optional public policy uses only Issue #8's documented
-  2026 network/system and 2026–2027 tax periods. Unknown future rates fail closed.
-  No inferred EWII supplier contract.
+## Completed and validated
 
-## Current blocker / owner decision
+- Previous registry/provider, priorities, guest/simulation and pricing reference
+  implementation: 138 tests and exact-head remote tests/hassfest/HACS passed.
+- Current consumer checkpoint: **152 local tests passed, zero skipped**; Ruff and
+  formatting passed. Official local hassfest passed before the final fixture-only
+  test addition (no metadata change). Remote consumer CI must be checked after push.
+- New sites explicitly select producer config entry/site through native UI. Legacy
+  entries remain unchanged, visibly labeled migration/reference; no silent cutover.
+- Consumer validates version, identity, DKK/kWh/inclusive VAT, revision, source age,
+  sorted unique quarter ranges and READY completeness. Partial data is never zero-
+  filled; stale/error/unloaded producers fail closed immediately. Matching revision
+  events are filtered/coalesced; lookups throttle normally to once per minute.
+- No embedded fetch, tariff arithmetic or publication timer starts for a consumer
+  site. Tests spy on embedded paths and use mock read-only producer responses.
+- Producer contract text/example are identical in both repos; synthetic response
+  is exercised through EV decoder. Producer docs-only PR does not implement API.
 
-An asynchronous question is pending for actual **per-site EWII markup and VAT
-inclusion**. Need its effective period/source reference as well. Neither legacy
-3.75 øre nor advertised 6.5 øre is assumed. Advanced dated all-in pricing requires
-an explicit supplier rule; tests use a clearly labeled fictional test contract.
-Owner household parity also needs read-only Energy Price Broker output/input
-exports. No live HA access or household commands were attempted.
+## In progress / next independent task
 
-Once supplied: enter equivalent non-secret test fixtures (no credentials/customer
-identifiers), validate each site's expected all-in breakdown against the broker,
-and extend the dated source rules only for verified periods. Do not apply rates to
-running HA or Node-RED. Keep #7/#8 open until contract/source parity is verified.
+Publish/check the separate consumer draft PR, then measured EV energy/cost/distance
+history. Reuse existing History and coordinator stores; expose native sensors.
+Track measured energy even when prices are missing, mark unpriced energy explicitly
+and never count it as free. Keep restart baselines/gap guards, negative-cost support,
+physical/site/guest eligibility and odometer provider-switch rebasing. Distance is
+one logical-vehicle ledger, not duplicated across every site.
 
-## Remaining priorities
+Then broaden Brain/provider safety and optimizer parity regression coverage without
+changing priority order, 30-minute replanning, earliest-slot tolerance, guest guards,
+command ownership or simulation-only boundary.
 
-1. Wait for/resolve owner contract and read-only comparison inputs below.
-   All substantive implementation checkpoints have passed exact-head CI.
-2. Resolve owner EWII terms/read-only comparison fixtures; no rate speculation.
-3. Extend authoritative dated national rates only when published/verified. Current
-   adapter is a bounded policy schedule, not a live legislative discovery service.
-4. Broader provider/DSO presets require verified identity/capability/VAT metadata.
-   Pricing/charger-status entity references remain strings; vehicle references are
-   registry-pinned. Hardware observation needs separate owner authorization.
-5. Historical exports/ledger beyond 365 days, energy/cost/distance entities, richer
-   site/currency configuration and wider parity scenarios remain follow-ups.
+## Genuine external prerequisites
 
-## Commands / validation
+Independent producer currently has README/LICENSE, requirements Issues #1–#5 and
+contract proposal only: **no runtime get_prices service exists**. Actual two-runtime
+interoperability remains blocked pending producer implementation/adoption. Consumer
+mock tests are not evidence that real producer calls work.
 
-From `/workspace/HA-EV-Charge-Manager`, existing Python 3.14.8 environment:
+Producer Issue #4 records invoice-backed household EWII **0.030 DKK/kWh ex VAT in
+June–September 2026 only**. Raw invoices are absent from workspace/source checkouts;
+no raw-file verification, private invoice fixture, current-term inference or other-
+site default is claimed. Invoice/source verification belongs to the producer.
+
+## Validation commands
+
+From `/workspace/HA-EV-Charge-Manager`, existing Python 3.14.8 / HA 2026.10.2:
 
 ```sh
 git status --short --branch
 git log -6 --oneline
-/workspace/ev-manager-venv/bin/python -m pytest --cov=custom_components.ev_charge_manager --cov-report=term
-/workspace/ev-manager-venv/bin/python -m pytest tests/test_registry.py tests/test_provider_management.py tests/test_price_engine.py tests/test_price_schedule.py tests/test_tariff_source.py tests/test_price_components.py
+/workspace/ev-manager-venv/bin/python -m pytest
+/workspace/ev-manager-venv/bin/python -m pytest tests/test_price_consumer.py tests/test_history.py
 /workspace/ev-manager-venv/bin/ruff check custom_components tests
 /workspace/ev-manager-venv/bin/ruff format --check custom_components tests
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
-gh pr checks 6 --repo NicolaiTandrup/HA-EV-Charge-Manager
-gh pr checks 11 --repo NicolaiTandrup/HA-EV-Charge-Manager
-gh pr checks 12 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 
-Node.js 24 is required for five original Node-RED JavaScript parity cases; zero
-skips in the last full run. Do not reinstall working dependencies. Local full HACS
-container DNS is unavailable; use real remote HACS validation, not bypasses.
+Node.js 24 required for five original Node-RED parity cases (no skips). Remote HACS
+is authoritative; local full action container DNS limitation is known. Do not redo
+working setup/network troubleshooting. Producer docs-only example is validated with
+`python -m json.tool docs/contracts/example-response-v1.json`; no producer runtime,
+hassfest/HACS or real invoice tests exist/are claimed there.
 
-## Safety / continuation
+## Checkpoint / safety
 
-No Node-RED changes, live HA/vehicle/charger commands, merge, stable release or
-production cutover. Public tariff HTTP reads are opt-in; manifest cloud_polling
-reflects that optional feature. Default/manual mode makes none. No secrets or
-production configuration are committed. Future real commissioning is per vehicle
-AND charger. Guest downtime reconciliation and no live executor boundaries remain.
-
-At checkpoints update actual results, commit/push coherent changes and comment on
-active PR/issue. A handoff cannot contain its own hash; use checkpoint subject and
-exact prior validated hashes. Reconstruct interruptions from Git/PR/tests before
-repeating work. Resume owner-contract validation when inputs arrive; do not rebuild
-the completed registry, persistent engine, scheduling or verified Radius adapter.
-
-Cloud networking: additive Datahub/Radius research hosts were saved to the cloud
-configuration draft, preserving GitHub/package rules. Current access works, but
-future snapshot reuse requires reviewing/saving and publishing the cloud environment
-configuration (not an integration release). No secret requirements were added.
+Update this same file with actual results and exact validated code hashes, commit,
+push and comment at meaningful milestones. Check remote CI for the exact head.
+No merge, stable release, deploy or production cutover. Original Node-RED remains
+byte-identical; no live HA/vehicle/charger commands. Consumer reads only proposed
+producer lookup; pricing reference tests mock sources. Future real commissioning
+remains per vehicle AND charger. Do not commit secrets or raw private invoices.

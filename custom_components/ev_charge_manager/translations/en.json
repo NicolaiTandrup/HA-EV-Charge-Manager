@@ -13,7 +13,8 @@
           "remove": "Remove item",
           "finish": "Save",
           "edit": "Edit item or provider fields",
-          "manage_provider": "Manage provider priority or device"
+          "manage_provider": "Manage provider priority or device",
+          "legacy_site": "Migration/reference site (legacy)"
         }
       },
       "modules": {
@@ -61,34 +62,18 @@
         }
       },
       "site": {
-        "title": "Site and all-in prices",
-        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "title": "Price Engine consumer site",
+        "description": "Select the independent authoritative producer. EV Charge Manager never calculates tariffs or fetches market data for this site. Missing/stale producer data makes forecasts unavailable.",
         "data": {
           "id": "Id",
           "name": "Name",
           "zone_state": "Zone State",
           "timezone": "Timezone",
           "grid_kw": "Grid Kw",
-          "nordpool_entry": "Nordpool Entry",
-          "price_entity": "Price Entity",
-          "price_attribute": "Price Attribute",
-          "price_multiplier": "Price Multiplier",
-          "area": "Area",
-          "price_basis": "Price Basis",
-          "grid": "Grid",
-          "tax": "Tax",
-          "supplier": "Supplier",
-          "vat": "Vat",
-          "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
-          "guest_power_entity": "Optional measured guest demand (W or kW)",
-          "dso_mode": "Grid source (manual or verified Radius C)",
-          "dso_manual_fallback": "Optional manual fallback (DKK/kWh excluding VAT)",
-          "dso_stale_days": "Maximum verified tariff cache age (days)",
-          "dated_components": "Dated component rules (see pricing documentation)",
-          "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
-          "heating_registered": "Owner confirms registered electric heating",
-          "annual_usage_kwh": "Verified annual usage (kWh)",
-          "usage_year": "Annual usage year"
+          "producer_entry": "Producer Entry",
+          "producer_site": "Producer Site",
+          "price_max_age_seconds": "Price Max Age Seconds",
+          "guest_power_entity": "Guest Power Entity"
         }
       },
       "charger": {
@@ -135,6 +120,37 @@
         "description": "Select the replacement device, then review its fields. Existing vehicle identity and provider position are retained.",
         "data": {
           "device": "Replacement device"
+        }
+      },
+      "legacy_site": {
+        "title": "Migration/reference pricing site (frozen)",
+        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "data": {
+          "id": "Id",
+          "name": "Name",
+          "zone_state": "Zone State",
+          "timezone": "Timezone",
+          "grid_kw": "Grid Kw",
+          "nordpool_entry": "Nordpool Entry",
+          "price_entity": "Price Entity",
+          "price_attribute": "Price Attribute",
+          "price_multiplier": "Price Multiplier",
+          "area": "Area",
+          "price_basis": "Price Basis",
+          "grid": "Grid",
+          "tax": "Tax",
+          "supplier": "Supplier",
+          "vat": "Vat",
+          "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
+          "guest_power_entity": "Optional measured guest demand (W or kW)",
+          "dso_mode": "Grid source (manual or verified Radius C)",
+          "dso_manual_fallback": "Optional manual fallback (DKK/kWh excluding VAT)",
+          "dso_stale_days": "Maximum verified tariff cache age (days)",
+          "dated_components": "Dated component rules (see pricing documentation)",
+          "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
+          "heating_registered": "Owner confirms registered electric heating",
+          "annual_usage_kwh": "Verified annual usage (kWh)",
+          "usage_year": "Annual usage year"
         }
       }
     },
@@ -161,7 +177,8 @@
           "remove": "Remove item",
           "finish": "Save",
           "edit": "Edit item or provider fields",
-          "manage_provider": "Manage provider priority or device"
+          "manage_provider": "Manage provider priority or device",
+          "legacy_site": "Migration/reference site (legacy)"
         }
       },
       "modules": {
@@ -209,34 +226,18 @@
         }
       },
       "site": {
-        "title": "Site and all-in prices",
-        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "title": "Price Engine consumer site",
+        "description": "Select the independent authoritative producer. EV Charge Manager never calculates tariffs or fetches market data for this site. Missing/stale producer data makes forecasts unavailable.",
         "data": {
           "id": "Id",
           "name": "Name",
           "zone_state": "Zone State",
           "timezone": "Timezone",
           "grid_kw": "Grid Kw",
-          "nordpool_entry": "Nordpool Entry",
-          "price_entity": "Price Entity",
-          "price_attribute": "Price Attribute",
-          "price_multiplier": "Price Multiplier",
-          "area": "Area",
-          "price_basis": "Price Basis",
-          "grid": "Grid",
-          "tax": "Tax",
-          "supplier": "Supplier",
-          "vat": "Vat",
-          "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
-          "guest_power_entity": "Optional measured guest demand (W or kW)",
-          "dso_mode": "Grid source (manual or verified Radius C)",
-          "dso_manual_fallback": "Optional manual fallback (DKK/kWh excluding VAT)",
-          "dso_stale_days": "Maximum verified tariff cache age (days)",
-          "dated_components": "Dated component rules (see pricing documentation)",
-          "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
-          "heating_registered": "Owner confirms registered electric heating",
-          "annual_usage_kwh": "Verified annual usage (kWh)",
-          "usage_year": "Annual usage year"
+          "producer_entry": "Producer Entry",
+          "producer_site": "Producer Site",
+          "price_max_age_seconds": "Price Max Age Seconds",
+          "guest_power_entity": "Guest Power Entity"
         }
       },
       "charger": {
@@ -283,6 +284,37 @@
         "description": "Select the replacement device, then review its fields. Existing vehicle identity and provider position are retained.",
         "data": {
           "device": "Replacement device"
+        }
+      },
+      "legacy_site": {
+        "title": "Migration/reference pricing site (frozen)",
+        "description": "Select either official Nord Pool or a timestamped price sensor. Grid, tax and supplier are DKK/kWh excluding VAT. Select all_in only for a complete price; set all additions and VAT to zero. No vehicle commands are sent.",
+        "data": {
+          "id": "Id",
+          "name": "Name",
+          "zone_state": "Zone State",
+          "timezone": "Timezone",
+          "grid_kw": "Grid Kw",
+          "nordpool_entry": "Nordpool Entry",
+          "price_entity": "Price Entity",
+          "price_attribute": "Price Attribute",
+          "price_multiplier": "Price Multiplier",
+          "area": "Area",
+          "price_basis": "Price Basis",
+          "grid": "Grid",
+          "tax": "Tax",
+          "supplier": "Supplier",
+          "vat": "Vat",
+          "grid_tariff_entity": "Optional grid tariff schedule sensor (slots, DKK/kWh ex VAT)",
+          "guest_power_entity": "Optional measured guest demand (W or kW)",
+          "dso_mode": "Grid source (manual or verified Radius C)",
+          "dso_manual_fallback": "Optional manual fallback (DKK/kWh excluding VAT)",
+          "dso_stale_days": "Maximum verified tariff cache age (days)",
+          "dated_components": "Dated component rules (see pricing documentation)",
+          "danish_public_rates": "Use issue-verified Danish public rates for their documented dates",
+          "heating_registered": "Owner confirms registered electric heating",
+          "annual_usage_kwh": "Verified annual usage (kWh)",
+          "usage_year": "Annual usage year"
         }
       }
     },

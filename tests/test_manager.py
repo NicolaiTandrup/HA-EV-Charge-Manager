@@ -374,7 +374,7 @@ async def test_provider_and_site_ui_validation(hass):
         fid, {"name": "Car", "capacity_kwh": 75, "max_kw": 11, "efficiency": 0.9}
     )
     assert flow["type"] == "menu"
-    flow = await hass.config_entries.flow.async_configure(fid, {"next_step_id": "site"})
+    flow = await hass.config_entries.flow.async_configure(fid, {"next_step_id": "legacy_site"})
     assert flow["type"] == "form"
     data = {
         "id": "home",

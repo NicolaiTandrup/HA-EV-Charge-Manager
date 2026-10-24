@@ -1,0 +1,18 @@
+{
+  "api_version": 1,
+  "producer_entry_id": "producer-entry",
+  "site_id": "producer-site",
+  "currency": "DKK",
+  "unit": "DKK/kWh",
+  "vat_included": true,
+  "revision": 1,
+  "status": "READY",
+  "verified_at": "2026-10-24T12:00:00+00:00",
+  "slots": [
+    {
+      "start": "2026-10-24T12:00:00+00:00",
+      "end": "2026-10-24T12:15:00+00:00",
+      "final_price_incl_vat": 1.25
+    }
+  ]
+}
