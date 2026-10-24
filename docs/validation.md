@@ -89,4 +89,5 @@ current contract/default or a raw-invoice conformance test.
 Measured-history `c38e915` passed 166 tests and all exact-head remote push/PR tests,
 hassfest and HACS. Follow-up adds native producer-entry mapping and out-of-window
 Optimizer-start regressions: **168 passed, no skips; 91% coverage**, Ruff/format and
-local official hassfest passed. Check follow-up exact-head remote checks.
+local official hassfest passed. Exact head `8def346` passed all six remote
+push/PR tests, hassfest and HACS checks.

@@ -24,8 +24,11 @@ Active EV branch `feat/measured-ev-history`, draft **#14**, based on #13.
 Measured-history code `c38e915` passed **166 local tests** and all six exact-head
 remote push/PR tests, hassfest and HACS.
 Current follow-up subject `Validate producer mapping and require scheduled optimizer starts`:
+validated at `8def3463f43765311eae791892aba43a777fa1d3`:
 **168 tests passed, zero skipped; 91% coverage**; Ruff/format and official local
-hassfest passed with zero invalid integrations. Check its pushed exact head CI.
+hassfest passed with zero invalid integrations. All six exact-head remote push/PR
+checks passed: tests, hassfest and HACS. The following handoff-only commit records
+this evidence; substantive code is unchanged.
 It adds native producer-mapping validation and rejects Optimizer starts outside a
 current proposed allocation, including already-complete targets. Do not merge stack.
 
@@ -79,7 +82,7 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Check exact-head remote CI for the measured-history draft, then coordinate producer
+Code CI is green for the measured-history draft. Next coordinate producer
 PR #6 / Issue #5 adoption and actual API implementation. Extend consumer tests only
 against the agreed version. Independent EV follow-ups: settled-history backfill,
 verified brand capability metadata and broader parity fixtures; no live commands.
