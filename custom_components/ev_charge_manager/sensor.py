@@ -6,6 +6,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, Sen
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .executor import capabilities
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -119,6 +120,15 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
                     ),
                     {},
                 ),
+                command_capabilities={
+                    p["id"]: {
+                        "supported": sorted(capabilities(self.hass, p)),
+                        "control_enabled": False,
+                    }
+                    for v in self.coordinator.registry.vehicles
+                    if v["id"] == self.vehicle
+                    for p in v.get("providers", [])
+                },
                 snapshot_health=data["vehicle_health"].get(self.vehicle),
                 fields={
                     field: {

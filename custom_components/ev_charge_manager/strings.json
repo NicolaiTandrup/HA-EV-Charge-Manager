@@ -15,7 +15,8 @@
           "edit": "Edit item or provider fields",
           "manage_provider": "Manage provider priority or device",
           "legacy_site": "Migration/reference site (legacy)",
-          "provider_policy": "Read/write provider policies"
+          "provider_policy": "Read/write provider policies",
+          "command_mapping": "Review command capability mappings"
         }
       },
       "modules": {
@@ -181,6 +182,22 @@
           "write_current": "WRITE current override (__default__ uses preference)",
           "write_enable": "WRITE enable override (__default__ uses preference)",
           "write_disable": "WRITE disable override (__default__ uses preference)"
+        }
+      },
+      "command_mapping": {
+        "title": "Select provider for capability review",
+        "data": {
+          "provider": "Provider"
+        }
+      },
+      "command_fields": {
+        "title": "Review service targets (control stays disabled)",
+        "description": "Map only verified device capabilities. No service is called by saving. A matching switch report is not proof of actual energy delivery.",
+        "data": {
+          "start_stop": "Charging switch",
+          "enable_disable": "Charger authorization switch",
+          "limit": "Charge-limit number",
+          "current": "Current limit in amps"
         }
       }
     },
@@ -209,7 +226,8 @@
           "edit": "Edit item or provider fields",
           "manage_provider": "Manage provider priority or device",
           "legacy_site": "Migration/reference site (legacy)",
-          "provider_policy": "Read/write provider policies"
+          "provider_policy": "Read/write provider policies",
+          "command_mapping": "Review command capability mappings"
         }
       },
       "modules": {
@@ -375,6 +393,22 @@
           "write_current": "WRITE current override (__default__ uses preference)",
           "write_enable": "WRITE enable override (__default__ uses preference)",
           "write_disable": "WRITE disable override (__default__ uses preference)"
+        }
+      },
+      "command_mapping": {
+        "title": "Select provider for capability review",
+        "data": {
+          "provider": "Provider"
+        }
+      },
+      "command_fields": {
+        "title": "Review service targets (control stays disabled)",
+        "description": "Map only verified device capabilities. No service is called by saving. A matching switch report is not proof of actual energy delivery.",
+        "data": {
+          "start_stop": "Charging switch",
+          "enable_disable": "Charger authorization switch",
+          "limit": "Charge-limit number",
+          "current": "Current limit in amps"
         }
       }
     },

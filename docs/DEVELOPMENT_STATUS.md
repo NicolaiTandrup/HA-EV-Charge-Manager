@@ -32,16 +32,22 @@ hassfest and HACS checks passed. GitHub authentication has recovered. Producer
 proposal correction `edd4361` was pushed; correction comments posted on EV #14
 and producer #6. No existing PR was merged or branch overwritten.
 
-Active branch `feat/native-provider-policies`, based on #16. Checkpoint subject
-`Configure independent provider policies and validate arbitrary native fleets`:
-**183 local tests passed, zero skipped, 92% coverage**, Ruff/format passed.
-Native regression tests failed first for missing independent policy and duplicate
-charger ownership, then passed. Tests cover first setup with 0/1/2/6 vehicles and
-chargers and subsequent edit/remove, retaining logical identity. READ/WRITE primary,
-independent fallback and per-field/capability overrides use ordinary forms. Explicit
-missing preferred providers fail closed. No control enablement was added.
-Official local hassfest passed (1 integration, 0 invalid); new remote checks
-pending push. No skipped tests, live commands or production modifications.
+Provider policy draft **#17**, branch `feat/native-provider-policies`, head `c2a7a3d`:
+183 tests passed, zero skipped, 92% coverage, Ruff/format and local hassfest passed.
+All six exact-head remote tests/hassfest/HACS push/PR checks passed. Covers native
+0/1/2/6 fleet setup, edits/removal, independent policies and duplicate charger rejection.
+
+Active branch `feat/mock-command-executor`, based on #17. Checkpoint subject
+`Add dormant mock-tested command executor and reviewed capability mappings`:
+**191 tests passed, zero skipped, 92% coverage**, Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). Remote checks pending publication.
+A failing import regression preceded implementation. Mock HA dispatch matches
+preserved Node-RED switch/number routes. Tests cover service-return vs observation,
+timeouts without duplicate writes/provider fallback, budgets, guests, ownership,
+state freshness, bounds, renames, rebound registry entities and native manual maps.
+Executor is dormant, has no default transport, is not called by startup or public
+services. Native mappings/policies grant no authority. See docs/command-executor.md
+for real commissioning/persistence/acknowledgment acceptance gaps. No live commands.
 
 ## Completed (do not repeat)
 
@@ -98,14 +104,18 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Complete policy checkpoint validation, commit/push as a separate draft based on
-#16. Next add a dormant, explicitly injected/mock-tested Command Executor using
-recorded Node-RED switch/number service semantics. No executor is wired into live
-startup/services and no live transport is enabled. Add capability diagnostics and
-safe uncertain-ack/idempotency tests, then deadline-scoped price consumption,
-charger discovery/rename ownership and dated measured-history totals. Document
-atomic owner-approved migration with offline fixtures (no simultaneous legacy/new
-Nord Pool requirement). Preserve all prior tests and production baselines.
+Publish dormant-executor draft based on #17 and check exact-head CI. Next isolate
+current measured-cost price lookup from unavailable tomorrow scheduling ranges;
+retain actual API v1 READY-only semantics. Add charger discovery/rename ownership,
+remaining native site policy fields, dated measured history and broader multi-site
+parity. Add install/atomic rollback/physical acceptance docs using offline recorded
+fixtures, with no simultaneous legacy/new Nord Pool broker requirement.
+
+Original Brain/Optimizer exports are available and unchanged. The complete original
+Energy Price Broker v2.2 export/recorded outputs are **not present** in this workspace
+or earlier repository source trees. Issue descriptions are not an executable oracle.
+Document that offline parity gap; do not claim raw-invoice or full broker parity.
+Continue independent work without reconstructing or modifying the live broker.
 
 ## Exact validation commands
 
