@@ -1,3 +1,7 @@
+> Pricing ownership update (2026-10-24): ADR 004 makes the independent
+> HA-Energy-Price-Engine authoritative. Pricing-producer details below document
+> preserved migration/reference work; new EV sites use the versioned consumer.
+
 # ADR 001 — Unified native read-only integration
 
 Status: implemented for developer review. Issues #1–#4 are the requirements,

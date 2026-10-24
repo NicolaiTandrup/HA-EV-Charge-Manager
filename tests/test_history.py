@@ -23,10 +23,11 @@ def test_no_energy_invented_on_restart_disconnect_or_price_gap():
     h.sample_power(NOW + timedelta(minutes=1), 10, True, [])
     h.sample_power(NOW + timedelta(minutes=2), 10, False, slots([1]))
     h.sample_power(NOW + timedelta(minutes=3), 10, True, slots([1]))
-    assert h.energy_kwh == 0
+    assert h.energy_kwh == pytest.approx(10 / 60)
+    assert h.unpriced_energy_kwh == pytest.approx(10 / 60)
     restored = History(**h.persistent())
     restored.sample_power(NOW + timedelta(hours=1), 10, True, slots([1] * 8))
-    assert restored.energy_kwh == 0
+    assert restored.energy_kwh == pytest.approx(10 / 60)
 
 
 def test_odometer_rebase_source_units_and_outlier():

@@ -65,10 +65,26 @@ def async_register(hass, coordinator):
             call.data["action"],
             call.data.get("value"),
         )
+        optimizer_safe = True
+        if intent.owner == "optimizer" and session and session.vehicle:
+            optimizer_safe = any(
+                forecast.valid
+                and forecast.updated_at
+                and 0 <= (now - forecast.updated_at).total_seconds() <= 2400
+                and coordinator.sites[site_id].site["zone_state"] == mapping["zone_state"]
+                and (
+                    coordinator.sites[site_id].site.get("price_source") != "energy_price_engine"
+                    or bool(coordinator.price_consumer.slots(coordinator.sites[site_id].site, now))
+                )
+                for site_id, forecasts in coordinator.data["forecasts"].items()
+                for key, forecast in forecasts.items()
+                if key == session.vehicle
+            )
         result = coordinator.commands.propose(
             intent,
             current_session=session.id if session else None,
             fresh=source_fresh
+            and optimizer_safe
             and snapshot_safe
             and 0 <= age <= 30
             and observed.get("session_id") == call.data["session_id"],

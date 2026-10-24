@@ -200,8 +200,12 @@ class OptimizerCoordinator(DataUpdateCoordinator):
                 saved[key][name] = getattr(rule, name).isoformat() if getattr(rule, name) else None
         self.saved_rules = saved
         self.store.async_delay_save(lambda: saved, 1)
+        self._sample_history(vehicles, slots, now)
+        return result
+
+    def _sample_history(self, vehicles, slots, now):
         by_key = {v.key: v for v in vehicles}
-        for mapping in config.get("vehicles", []):
+        for mapping in self.config.get("vehicles", []):
             key = mapping["key"]
             vehicle = by_key[key]
             history = self.history.setdefault(key, History())
@@ -223,4 +227,3 @@ class OptimizerCoordinator(DataUpdateCoordinator):
                     pass
         history_saved = {key: h.persistent() for key, h in self.history.items()}
         self.history_store.async_delay_save(lambda: history_saved, 1)
-        return result

@@ -98,6 +98,7 @@ class VehicleRegistry:
         if (
             len(owners) != 1
             or entity is None
+            or entity.platform == "ev_charge_manager"
             or entity.id != ref
             or entity.device_id != device
             or entity.disabled_by
@@ -159,6 +160,11 @@ class VehicleRegistry:
                         continue
                 except ValueError:
                     continue
+            if field == "odometer" and state.attributes.get("unit_of_measurement") not in {
+                "km",
+                "mi",
+            }:
+                continue
             if field in {"cable", "charging"} and value not in {
                 "on",
                 "off",

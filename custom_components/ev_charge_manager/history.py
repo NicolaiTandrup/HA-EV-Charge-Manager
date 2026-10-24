@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from math import isfinite
 
 from .planner import PriceSlot, utc
 
@@ -11,6 +12,7 @@ class History:
     energy_kwh: float = 0
     cost: float = 0
     distance_km: float = 0
+    unpriced_energy_kwh: float = 0
     odometer_source: str | None = None
     last_odometer_km: float | None = None
     # Samples are deliberately not persisted; restart establishes a fresh baseline.
@@ -18,11 +20,26 @@ class History:
     last_power_kw: float = 0
     was_eligible: bool = False
 
+    def __post_init__(self):
+        if any(
+            not isfinite(v) or v < 0
+            for v in (self.energy_kwh, self.distance_km, self.unpriced_energy_kwh)
+        ) or not isfinite(self.cost):
+            raise ValueError("Invalid persisted measured totals")
+        if self.unpriced_energy_kwh > self.energy_kwh + 1e-9 or (
+            self.last_odometer_km is not None
+            and (not isfinite(self.last_odometer_km) or self.last_odometer_km < 0)
+        ):
+            raise ValueError("Invalid persisted history coverage/odometer")
+
     def sample_power(self, now: datetime, power_kw: float, eligible: bool, slots: list[PriceSlot]):
         now = utc(now)
+        eligible = eligible and isfinite(power_kw) and power_kw >= 0
         previous = self.sampled_at
         elapsed = (now - previous).total_seconds() if previous else 0
         if previous and self.was_eligible and eligible and 0 < elapsed <= 180:
+            measured = (self.last_power_kw + power_kw) / 2 * elapsed / 3600
+            self.energy_kwh += measured
             segments = []
             cursor = previous
             for slot in slots:
@@ -44,12 +61,17 @@ class History:
                 segments.append((energy, energy * slot.price))
                 cursor = end
             if cursor == now:
-                self.energy_kwh += sum(e for e, _ in segments)
                 self.cost += sum(c for _, c in segments)
-        self.sampled_at, self.last_power_kw, self.was_eligible = now, max(0, power_kw), eligible
+            else:
+                self.unpriced_energy_kwh += measured
+        self.sampled_at, self.last_power_kw, self.was_eligible = (
+            now,
+            power_kw if isfinite(power_kw) and power_kw >= 0 else 0,
+            eligible,
+        )
 
     def sample_odometer(self, source: str, value: float, unit: str):
-        if unit not in ("km", "mi") or value < 0:
+        if unit not in ("km", "mi") or not isfinite(value) or value < 0:
             return
         current = value * (1.609344 if unit == "mi" else 1)
         previous = self.last_odometer_km
@@ -64,5 +86,12 @@ class History:
     def persistent(self):
         return {
             name: getattr(self, name)
-            for name in ("energy_kwh", "cost", "distance_km", "odometer_source", "last_odometer_km")
+            for name in (
+                "energy_kwh",
+                "cost",
+                "distance_km",
+                "unpriced_energy_kwh",
+                "odometer_source",
+                "last_odometer_km",
+            )
         }

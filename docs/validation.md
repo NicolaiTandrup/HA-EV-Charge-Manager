@@ -72,3 +72,16 @@ Ruff/format and official local hassfest passed. The 09:00 Copenhagen publication
 bucket prevents midnight refresh from suppressing a subsequent source verification.
 `afe2e88` and exact follow-up head `6f972a5` both passed all push/PR tests,
 hassfest and HACS. No household parity/hardware acceptance is claimed.
+
+## Independent producer / EV history continuation (2026-10-24)
+
+Consumer `3204a2f`: 152 local tests and all exact-head remote tests/hassfest/HACS
+passed. Shared v1 producer example is synthetic; no actual producer runtime exists.
+Latest measured-history checkpoint: **166 passed, zero skipped; 91% coverage**;
+Ruff/format and official local hassfest passed. Remote results must be checked at
+its pushed head. Includes source-report-based energy, explicit unpriced coverage,
+negative costs, logical-distance attribution, guest/site guards and consumer parity.
+
+No raw invoice files were available. The producer issue's 0.030 DKK/kWh ex-VAT
+June–September 2026 household statement is historical scoped evidence only, not a
+current contract/default or a raw-invoice conformance test.

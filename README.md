@@ -158,3 +158,9 @@ corrections replace future records. Unknown slots remain unavailable. See
 price-source switch is performed. See [refresh policy](docs/price-refresh.md),
 [verified source ADR](docs/adr-003-verified-danish-sources.md) and
 [dated pricing configuration](docs/dated-pricing.md).
+
+Measured EV history now exposes native site/vehicle energy, known priced cost,
+unpriced measured energy and one distance ledger per logical vehicle. Values come
+from new power/odometer reports, never planned allocations; see
+[measurement assumptions and coverage](docs/measured-history.md). Independent
+producer interoperability is still pending actual producer API implementation.

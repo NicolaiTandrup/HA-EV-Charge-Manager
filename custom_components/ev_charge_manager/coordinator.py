@@ -15,6 +15,7 @@ from homeassistant.util import dt as dt_util
 from .brain import DISCONNECTED, Brain, Reading, normalize
 from .command import CommandManager
 from .const import DOMAIN
+from .history import History
 from .optimizer import OptimizerCoordinator
 from .price_consumer import EVENT as PRICE_EVENT
 from .price_consumer import PriceConsumer
@@ -45,6 +46,8 @@ class SiteOptimizer(OptimizerCoordinator):
         self.planned_at = None
         self.price_key = None
         self.price_error = None
+        self.measurement_vehicles = None
+        self.measurement_sources = {}
 
     def _plan(self, vehicles, slots, now, **kwargs):
         # Regular 30-minute cadence, with immediate input/price/safety-boundary
@@ -69,6 +72,48 @@ class SiteOptimizer(OptimizerCoordinator):
             self.cached_plan = super()._plan(vehicles, slots, now, **kwargs)
             self.plan_key, self.planned_at = key, now
         return dict(self.cached_plan)
+
+    def _sample_history(self, vehicles, slots, now):
+        # Actual power does not require SoC, target or a successful plan.
+        for vehicle in self.registry.vehicles:
+            key = vehicle["id"]
+            fields = self.readings.get(key, {})
+            selected = [fields.get(role) for role in ("cable", "charging", "power")]
+            eligible = all(selected)
+            power = 0
+            if eligible:
+                cable, charging, reading = selected
+                reports = [value.reported_at for value in selected]
+                eligible = (
+                    cable.value == "on"
+                    and charging.value == "on"
+                    and (max(reports) - min(reports)).total_seconds()
+                    <= self.registry.snapshot_skew_seconds
+                )
+                power = float(reading.value) / (
+                    1000 if reading.attributes["unit_of_measurement"] == "W" else 1
+                )
+            if self.measurement_vehicles is None:
+                tracker = fields.get("tracker")
+                eligible = (
+                    eligible and tracker is not None and tracker.value == self.site["zone_state"]
+                )
+            else:
+                eligible = eligible and key in self.measurement_vehicles
+            history = self.history.setdefault(key, History())
+            sampled_at = now
+            if eligible:
+                provider = next(p for p in vehicle["providers"] if p["id"] == reading.provider)
+                source_id = reading.provider + ":" + provider["entity_refs"]["power"]
+                if self.measurement_sources.get(key) != source_id:
+                    history.was_eligible = False
+                self.measurement_sources[key] = source_id
+                sampled_at = reading.reported_at
+                if history.sampled_at is not None and sampled_at <= history.sampled_at:
+                    continue  # Watchdog reads are not new physical measurements.
+            history.sample_power(sampled_at, power, eligible, slots)
+        saved = {key: history.persistent() for key, history in self.history.items()}
+        self.history_store.async_delay_save(lambda: saved, 1)
 
     def _prices(self, now):
         if self.price_error:
@@ -136,6 +181,8 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.commands = CommandManager(self.config.get("command_budget", 100))
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.sessions")
         self.sessions = Sessions()
+        self.distance_store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.distance")
+        self.distance_history = {}
         self.price_consumer = PriceConsumer(hass)
         self.price_engine = PriceEngine(hass, entry.entry_id)
         self.price_updater = PriceUpdater(hass, self.price_engine)
@@ -173,6 +220,11 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     async def async_load(self):
         self.persist_sources()
+        for key, record in (await self.distance_store.async_load() or {}).items():
+            try:
+                self.distance_history[key] = History(**record)
+            except ValueError, TypeError:
+                LOGGER.warning("Ignoring invalid persisted distance total")
         await self.price_engine.async_load(
             [
                 k
@@ -203,6 +255,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     async def async_save(self):
         await self.store.async_save(self.sessions.persistent())
+        await self.distance_store.async_save(
+            {key: h.persistent() for key, h in self.distance_history.items()}
+        )
         for site in self.sites.values():
             await site.async_save()
 
@@ -297,6 +352,17 @@ class ManagerCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self):
         now = dt_util.utcnow()
         snapshots = self.registry.snapshot(now)
+        for vehicle in self.registry.vehicles:
+            value = snapshots[vehicle["id"]].get("odometer")
+            if value:
+                provider = next(p for p in vehicle["providers"] if p["id"] == value.provider)
+                stable_source = value.provider + ":" + provider["entity_refs"]["odometer"]
+                history = self.distance_history.setdefault(vehicle["id"], History())
+                history.sample_odometer(
+                    stable_source, float(value.value), value.attributes.get("unit_of_measurement")
+                )
+        distance_saved = {key: h.persistent() for key, h in self.distance_history.items()}
+        self.distance_store.async_delay_save(lambda: distance_saved, 1)
         states = {}
         for key, fields in snapshots.items():
             for field, value in fields.items():
@@ -351,9 +417,28 @@ class ManagerCoordinator(DataUpdateCoordinator):
         forecasts = {}
         for key, site in self.sites.items():
             site.prepare(snapshots)
+            site.measurement_vehicles = None
+            if self.config.get("brain_enabled", True):
+                site.measurement_vehicles = {
+                    row["car"]
+                    for charger in self.config.get("chargers", [])
+                    for row in [rows.get(charger["id"], {})]
+                    if row.get("valid")
+                    and charger["zone_state"] == site.site["zone_state"]
+                    and not session_rows[charger["id"]]["simulated_guest_authorized"]
+                }
             if self.config.get("brain_enabled", True):
                 site.config["vehicles"] = [
-                    v for v in site.config["vehicles"] if v["key"] in admitted
+                    v
+                    for v in site.config["vehicles"]
+                    if v["key"] in admitted
+                    and any(
+                        row.get("valid")
+                        and row.get("car") == v["key"]
+                        and charger["zone_state"] == site.site["zone_state"]
+                        for charger in self.config.get("chargers", [])
+                        for row in [rows.get(charger["id"], {})]
+                    )
                 ]
             site.config["grid_kw"] = site.site["grid_kw"]
             uncertain_guest = any(

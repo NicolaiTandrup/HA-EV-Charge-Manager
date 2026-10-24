@@ -261,7 +261,9 @@ class Editor:
         if user_input:
             reg = er.async_get(self.hass)
             if any(
-                (e := reg.async_get(eid)) is None or e.device_id != self.provider["device"]
+                (e := reg.async_get(eid)) is None
+                or e.platform == DOMAIN
+                or e.device_id != self.provider["device"]
                 for eid in user_input.values()
             ):
                 errors["base"] = "invalid_mapping"

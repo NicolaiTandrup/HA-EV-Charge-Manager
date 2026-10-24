@@ -178,3 +178,57 @@ def test_shared_producer_example_fixture():
         data, "producer-entry", "producer-site", start, start, start + timedelta(minutes=15)
     )
     assert result[0].price == 1.25
+
+
+def test_consumed_all_in_prices_preserve_earliest_tolerance_ties():
+    from dataclasses import replace
+
+    from custom_components.ev_charge_manager.planner import plan_site
+
+    from .test_planner import V
+
+    data = response("producer", "home", NOW, NOW + timedelta(minutes=45))
+    for row, amount in zip(data["slots"], [2, 1.004, 1], strict=True):
+        row["final_price_incl_vat"] = amount
+    slots, _ = decode(data, "producer", "home", NOW, NOW, NOW + timedelta(minutes=45))
+    forecast = plan_site(
+        [replace(V, target=61)],
+        slots,
+        NOW,
+        timezone="Europe/Copenhagen",
+        grid_kw=10,
+        boost_enabled=False,
+    )["car"]
+    assert forecast.valid
+    assert forecast.allocations[0].start == NOW + timedelta(minutes=15)
+    assert forecast.allocations[0].price == 1.004  # No extra VAT or unit conversion.
+
+
+async def test_producer_error_preserves_reason_and_bounded_retry(hass):
+    from custom_components.ev_charge_manager.price_consumer import PriceConsumer
+
+    producer = MockConfigEntry(domain=DOMAIN, state=ConfigEntryState.LOADED)
+    producer.add_to_hass(hass)
+    calls = []
+
+    async def fail(call):
+        calls.append(call)
+        raise TimeoutError()
+
+    hass.services.async_register(
+        DOMAIN, "get_prices", fail, supports_response=SupportsResponse.ONLY
+    )
+    consumer = PriceConsumer(hass)
+    site = {
+        "id": "home",
+        "producer_entry": producer.entry_id,
+        "producer_site": "house",
+        "timezone": "Europe/Copenhagen",
+    }
+    await consumer.refresh(site, NOW)
+    await consumer.refresh(site, NOW)
+    assert len(calls) == 1
+    assert consumer.slots(site, NOW) == ()
+    assert consumer.status["home"]["status"] == "ERROR"
+    assert consumer.status["home"]["reason"] == "TimeoutError"
+    producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
