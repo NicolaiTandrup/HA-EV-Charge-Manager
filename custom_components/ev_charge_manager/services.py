@@ -19,7 +19,8 @@ def async_register(hass, coordinator):
             (c for c in coordinator.config.get("chargers", []) if c["id"] == call.data["charger"]),
             None,
         )
-        state = hass.states.get(charger["status"]) if charger else None
+        source = coordinator.chargers.source(charger) if charger else None
+        state = hass.states.get(source) if source else None
         now = dt_util.utcnow()
         if (
             not state
@@ -45,7 +46,8 @@ def async_register(hass, coordinator):
             (c for c in coordinator.config.get("chargers", []) if c["id"] == call.data["charger"]),
             None,
         )
-        state = hass.states.get(mapping["status"]) if mapping else None
+        source = coordinator.chargers.source(mapping) if mapping else None
+        state = hass.states.get(source) if source else None
         source_fresh = bool(
             state
             and normalize(state.state) in CONNECTED
