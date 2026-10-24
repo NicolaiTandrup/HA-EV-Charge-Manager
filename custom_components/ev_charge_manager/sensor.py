@@ -111,6 +111,14 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
         if self.kind == "vehicle_state":
             attrs.update(
                 vehicle_id=self.vehicle,
+                provider_policy=next(
+                    (
+                        v.get("provider_policy", {})
+                        for v in self.coordinator.registry.vehicles
+                        if v["id"] == self.vehicle
+                    ),
+                    {},
+                ),
                 snapshot_health=data["vehicle_health"].get(self.vehicle),
                 fields={
                     field: {
@@ -147,6 +155,14 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             }
             attrs.update(
                 vehicle_id=self.vehicle,
+                provider_policy=next(
+                    (
+                        v.get("provider_policy", {})
+                        for v in self.coordinator.registry.vehicles
+                        if v["id"] == self.vehicle
+                    ),
+                    {},
+                ),
                 site_id=self.site,
                 valid=f.valid,
                 provisional=f.provisional,

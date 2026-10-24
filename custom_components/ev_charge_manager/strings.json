@@ -3,7 +3,7 @@
   "config": {
     "step": {
       "menu": {
-        "title": "EV Charge Manager \u2014 read-only preview",
+        "title": "EV Charge Manager — read-only preview",
         "menu_options": {
           "modules": "Modules",
           "vehicle": "Add logical vehicle",
@@ -14,7 +14,8 @@
           "finish": "Save",
           "edit": "Edit item or provider fields",
           "manage_provider": "Manage provider priority or device",
-          "legacy_site": "Migration/reference site (legacy)"
+          "legacy_site": "Migration/reference site (legacy)",
+          "provider_policy": "Read/write provider policies"
         }
       },
       "modules": {
@@ -151,6 +152,35 @@
           "heating_registered": "Owner confirms registered electric heating",
           "annual_usage_kwh": "Verified annual usage (kWh)",
           "usage_year": "Annual usage year"
+        }
+      },
+      "provider_policy": {
+        "title": "Choose logical vehicle",
+        "data": {
+          "vehicle": "Vehicle"
+        }
+      },
+      "policy": {
+        "title": "Provider policies (control remains disabled)",
+        "description": "Fallback may select a supported provider before dispatch. An uncertain write is never retried through another provider. Removed explicit providers fail closed until reviewed.",
+        "data": {
+          "read_provider": "Preferred READ provider",
+          "write_provider": "Preferred WRITE provider",
+          "read_fallback": "Allow READ fallback",
+          "write_fallback": "Allow WRITE fallback before dispatch",
+          "read_soc": "READ soc override (__default__ uses preference)",
+          "read_target": "READ target override (__default__ uses preference)",
+          "read_cable": "READ cable override (__default__ uses preference)",
+          "read_tracker": "READ tracker override (__default__ uses preference)",
+          "read_charging": "READ charging override (__default__ uses preference)",
+          "read_power": "READ power override (__default__ uses preference)",
+          "read_odometer": "READ odometer override (__default__ uses preference)",
+          "write_start": "WRITE start override (__default__ uses preference)",
+          "write_stop": "WRITE stop override (__default__ uses preference)",
+          "write_limit": "WRITE limit override (__default__ uses preference)",
+          "write_current": "WRITE current override (__default__ uses preference)",
+          "write_enable": "WRITE enable override (__default__ uses preference)",
+          "write_disable": "WRITE disable override (__default__ uses preference)"
         }
       }
     },
@@ -167,7 +197,7 @@
   "options": {
     "step": {
       "menu": {
-        "title": "EV Charge Manager \u2014 read-only preview",
+        "title": "EV Charge Manager — read-only preview",
         "menu_options": {
           "modules": "Modules",
           "vehicle": "Add logical vehicle",
@@ -178,7 +208,8 @@
           "finish": "Save",
           "edit": "Edit item or provider fields",
           "manage_provider": "Manage provider priority or device",
-          "legacy_site": "Migration/reference site (legacy)"
+          "legacy_site": "Migration/reference site (legacy)",
+          "provider_policy": "Read/write provider policies"
         }
       },
       "modules": {
@@ -316,6 +347,35 @@
           "annual_usage_kwh": "Verified annual usage (kWh)",
           "usage_year": "Annual usage year"
         }
+      },
+      "provider_policy": {
+        "title": "Choose logical vehicle",
+        "data": {
+          "vehicle": "Vehicle"
+        }
+      },
+      "policy": {
+        "title": "Provider policies (control remains disabled)",
+        "description": "Fallback may select a supported provider before dispatch. An uncertain write is never retried through another provider. Removed explicit providers fail closed until reviewed.",
+        "data": {
+          "read_provider": "Preferred READ provider",
+          "write_provider": "Preferred WRITE provider",
+          "read_fallback": "Allow READ fallback",
+          "write_fallback": "Allow WRITE fallback before dispatch",
+          "read_soc": "READ soc override (__default__ uses preference)",
+          "read_target": "READ target override (__default__ uses preference)",
+          "read_cable": "READ cable override (__default__ uses preference)",
+          "read_tracker": "READ tracker override (__default__ uses preference)",
+          "read_charging": "READ charging override (__default__ uses preference)",
+          "read_power": "READ power override (__default__ uses preference)",
+          "read_odometer": "READ odometer override (__default__ uses preference)",
+          "write_start": "WRITE start override (__default__ uses preference)",
+          "write_stop": "WRITE stop override (__default__ uses preference)",
+          "write_limit": "WRITE limit override (__default__ uses preference)",
+          "write_current": "WRITE current override (__default__ uses preference)",
+          "write_enable": "WRITE enable override (__default__ uses preference)",
+          "write_disable": "WRITE disable override (__default__ uses preference)"
+        }
       }
     },
     "error": {
@@ -326,7 +386,7 @@
   "services": {
     "simulate_guest_authorization": {
       "name": "Simulate guest authorization",
-      "description": "Authorizes only this integration\u2019s simulated guest session. Sends no physical command.",
+      "description": "Authorizes only this integration’s simulated guest session. Sends no physical command.",
       "fields": {
         "charger": {
           "name": "Charger",
