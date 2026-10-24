@@ -23,3 +23,10 @@ must be replaced or its preference explicitly reviewed before reads resume.
 
 Optional household examples: ElLingo may select Custom for READ/WRITE; Blue Flux
 may select Custom READ and Fleet WRITE. These are examples, never global defaults.
+
+Exact Tesla registry VIN evidence (supported integration identifiers or Tesla
+serial number) prevents assigning two device representations to different logical
+vehicles. Conflicting known VINs cannot be linked into one logical vehicle; imported
+conflicting/duplicate identities fail closed at runtime. Identifiers are compared
+transiently, never exposed in diagnostics. Missing registry VIN evidence remains
+unknown and requires manual verification; CM does not wake/fetch or infer from names.

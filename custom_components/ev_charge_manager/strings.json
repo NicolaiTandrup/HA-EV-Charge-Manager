@@ -194,7 +194,7 @@
       "command_mapping": {
         "title": "Select provider for capability review",
         "data": {
-          "provider": "Provider"
+          "provider": "Vehicle provider or charger"
         }
       },
       "command_fields": {
@@ -217,7 +217,9 @@
     },
     "error": {
       "invalid_mapping": "Invalid mapping, duplicate identity, timezone or price configuration.",
-      "duplicate_device": "This device is already linked to a logical vehicle."
+      "duplicate_device": "This device is already linked to a logical vehicle.",
+      "duplicate_physical_vehicle": "Exact registry identity matches a provider on another logical vehicle. Add this device to that vehicle instead.",
+      "conflicting_physical_vehicle": "Registry identity conflicts with this logical vehicle. Review the physical vehicle before linking this provider."
     },
     "abort": {
       "already_configured": "Already configured. Use Configure to change options.",
@@ -419,7 +421,7 @@
       "command_mapping": {
         "title": "Select provider for capability review",
         "data": {
-          "provider": "Provider"
+          "provider": "Vehicle provider or charger"
         }
       },
       "command_fields": {
@@ -442,7 +444,9 @@
     },
     "error": {
       "invalid_mapping": "Invalid mapping, duplicate identity, timezone or price configuration.",
-      "duplicate_device": "This device is already linked to a logical vehicle."
+      "duplicate_device": "This device is already linked to a logical vehicle.",
+      "duplicate_physical_vehicle": "Exact registry identity matches a provider on another logical vehicle. Add this device to that vehicle instead.",
+      "conflicting_physical_vehicle": "Registry identity conflicts with this logical vehicle. Review the physical vehicle before linking this provider."
     }
   },
   "services": {

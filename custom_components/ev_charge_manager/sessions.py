@@ -12,6 +12,7 @@ class PlugSession:
     id: str
     authorized: bool = False
     vehicle: str | None = None
+    source_device: str | None = None
     needs_reconciliation: bool = False
     started_at: str | None = None
     last_verified_connected: str | None = None
@@ -23,7 +24,7 @@ class Sessions:
             k: PlugSession(**v, needs_reconciliation=True) for k, v in (saved or {}).items()
         }
 
-    def update(self, charger, status, vehicle=None, now=None, reported_at=None):
+    def update(self, charger, status, vehicle=None, now=None, reported_at=None, source_device=None):
         now = now or datetime.now(UTC)
         status = normalize(status or "unknown")
         if status in DISCONNECTED:
@@ -31,8 +32,12 @@ class Sessions:
             return None
         if status not in CONNECTED:
             return None  # reserve durable identity but don't expose authorization
+        existing = self.items.get(charger)
+        if existing and existing.source_device != source_device:
+            self.items.pop(charger)  # A replaced physical device cannot inherit plug authority.
         session = self.items.setdefault(
-            charger, PlugSession(uuid4().hex, started_at=now.isoformat())
+            charger,
+            PlugSession(uuid4().hex, source_device=source_device, started_at=now.isoformat()),
         )
         session.last_verified_connected = (reported_at or now).isoformat()
         if session.needs_reconciliation:

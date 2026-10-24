@@ -54,16 +54,38 @@ passed. All six exact-head remote push/PR tests/hassfest/HACS checks passed. Nat
 charger discovery, registry-rename/reparent guards and site/departure policy fields
 are complete for mocked/read-only review; physical adapter acceptance is unrun.
 
-Active branch `feat/calendar-measured-history`, based on #20. Checkpoint subject
-`Persist observed calendar energy cost and distance reports`:
-**200 local tests passed, zero skips, 92% coverage**; Ruff/format passed. Official
-local hassfest passed (1 integration, 0 invalid); remote checks pending publication. Calendar
-regressions failed first, then passed: exact local-midnight price/energy splitting,
-negative cost credit, unpriced energy, day/week/month/year boundaries, dated global
-distance increments, persistence/restart and legacy lifetime totals without invented
-dates. Native period entities expose observed-bucket-only coverage and reset dates.
-Ledger timezone is pinned on first dated measurements; no retrospective cost rewrite,
-retention pruning, live commands or production changes.
+Calendar-history draft **#21**, branch `feat/calendar-measured-history`, code
+`60d7880`: 200 local tests, zero skips, 92% coverage, Ruff/format/local hassfest
+passed. All six exact-head remote push/PR tests/hassfest/HACS checks passed. New
+observed date buckets support day/week/month/year entities, exact local-midnight
+splitting, unpriced energy and negative cost. Legacy lifetime totals are not dated.
+
+Active branch `feat/beta-readiness`, based on #21. Checkpoint subject
+`Validate concurrent beta fleets and document reversible offline cutover`:
+**210 local tests passed, zero skips, 92% coverage**; Ruff/format including scripts
+passed. Official local hassfest passed (1 integration, 0 invalid). Remote checks pending
+push; do not report them as passed until exact-head completion.
+Failing regression exposed dangling active sessions after Options removal; fixed
+by pruning only active references, retaining historical ledgers. Real HA tests
+cover 0/1/2/6 concurrent vehicles/chargers/sites, explicit PE mapping, equal physical
+ownership, per-site power bounds and zero physical calls. Replaced physical devices
+cannot inherit guest session IDs/authority. Exact Tesla registry VIN duplicates and
+conflicts fail closed, with native error explaining correct logical linking; no
+names/network/fuzzy merges or VIN diagnostics. Missing VIN remains manual review.
+Native capability review now supports charger-only devices as well as vehicles.
+
+Installation and atomic cutover/rollback/hardware acceptance runbooks are under
+`docs/beta-installation.md` and `docs/beta-cutover.md`. The offline price-export
+comparison CLI is tested for exact/negative/zero prices, missing coverage, identity
+and VAT ambiguity. It fetches nothing and calculates no tariffs. The original full
+Energy Price Broker v2.2 export (tab epb_mqtt_tab_v22 / function epb22_build) and raw
+household recorded outputs/invoices remain missing; no full household parity claimed.
+
+**Readiness:** installable native read-only development candidate, NOT a live-control
+beta or published prerelease. HACS metadata CI is validated; main has not been merged
+and ordinary HACS candidate distribution needs separate owner-approved ref/release.
+Dormant command executor needs durable per-device authority/uncertain-write recovery
+and installed-version/hardware acceptance before live wiring. All drafts remain open.
 
 ## Completed (do not repeat)
 
@@ -120,11 +142,20 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Publish calendar-history draft based on #20 and check exact-head CI. Then add
-broader concurrent multi-site/reconfiguration tests and installation, offline parity,
-owner-approved atomic migration/rollback and hardware acceptance documentation.
-Keep remaining real-control persistence/authority and provider-version gaps explicit;
-passing mocks cannot grant real control or authorize prerelease publication.
+Publish beta-readiness draft based on #21, check exact-head CI and record results.
+Then continue in this order, without redoing completed ports/configuration:
+
+1. Add durable dormant-executor request/uncertainty audit storage and recovery tests,
+   preserving no default transport/public enablement; define explicit physical-session
+   reconciliation using verified installed-provider capabilities before any live wiring.
+2. Broaden recorded Node-RED Brain/Optimizer action traces and actual brand/version
+   capability fixtures. Full Energy Price Broker parity is blocked by its absent
+   export/recorded outputs; use offline fixtures, never simultaneous live brokers.
+3. Validate target HA OS/provider telemetry freshness, acknowledgments, per-device
+   ownership and prolonged guest/unplug/offline behavior only in separately owner-
+   authorized device trials. No unattended commands, production changes or prerelease.
+4. Consider settled historical cost backfill only with explicit producer settlement
+   semantics and immutable audit; never rewrite known measured costs silently.
 
 Original Brain/Optimizer exports are available and unchanged. The complete original
 Energy Price Broker v2.2 export/recorded outputs are **not present** in this workspace
@@ -141,11 +172,11 @@ git status --short --branch
 git log -6 --oneline
 PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/bin/python -m pytest --cov=custom_components.ev_charge_manager --cov-report=term
 PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/bin/python -m pytest tests/test_price_api_interop.py tests/test_price_consumer.py tests/test_measured_history.py tests/test_history.py tests/test_registry.py
-/workspace/ev-manager-venv/bin/ruff check custom_components tests
-/workspace/ev-manager-venv/bin/ruff format --check custom_components tests
+/workspace/ev-manager-venv/bin/ruff check custom_components tests scripts
+/workspace/ev-manager-venv/bin/ruff format --check custom_components tests scripts
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
-gh pr checks 13 --repo NicolaiTandrup/HA-EV-Charge-Manager
-gh pr checks 14 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 21 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 22 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 
@@ -163,3 +194,7 @@ check the exact head CI. A handoff cannot contain its own hash; use checkpoint
 subject and exact prior validated hashes. No production Node-RED changes, live
 HA/vehicle/charger commands, merge, stable release, deploy or cutover. Future real
 commissioning remains per vehicle AND charger. No secrets/raw private invoices in Git.
+
+Production export hashes verified unchanged at final checkpoint:
+- Brain v1.0: `529bb37fb8c7dcc74e7cb0d73c48b8cf62034d8ba6ea8cade7c9ef1aee788965`
+- Optimizer v1.2: `9d5bd42771539d08a584a94a5db7150bab7875afcb0c9d47e8528389ddc579ed`

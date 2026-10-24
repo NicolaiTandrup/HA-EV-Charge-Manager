@@ -19,7 +19,9 @@ shared vehicle identity/command infrastructure, and independent Brain/Optimizer
 toggles. Reuse the ported engines and existing tests. Maintain source provenance
 and license notices. Node-RED exports remain byte-identical production baselines.
 
-All native controls are read-only observations or simulations. Never issue live
+All exposed native controls are read-only observations or simulations. A dormant,
+explicitly injected/mock-tested command executor may be developed, but it must have
+no default live transport and no startup/public-service activation. Never issue live
 vehicle/charger commands, wake vehicles, modify running HA/Node-RED automations,
 or deploy production charging commands without explicit authorization. Official
 Nord Pool read services are allowed; development tests mock them. Commissioning
@@ -66,3 +68,12 @@ code, not a permanent subsystem to expand. Do not add new supplier policies or
 invoice-derived defaults here. Household EWII invoices are historical evidence for
 that household/period only; never infer another site's or a later contract's rate.
 Preserve the existing migration path until an explicit owner-approved cutover.
+
+## Beta migration evidence
+
+The old Energy Price Broker uses legacy HACS Nordpool while PE uses official HA
+Nord Pool. Do not require both brokers/integrations to run simultaneously. Use
+recorded historical exports/offline parity and the owner-approved atomic cutover
+runbook in docs/beta-cutover.md. No production cutover or prerelease is authorized.
+Keep hardware acceptance, durable command authority/recovery and missing source
+fixtures explicit; green CI alone does not make a live beta controller ready.

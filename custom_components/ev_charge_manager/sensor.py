@@ -158,6 +158,14 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
                 optimizer_enabled=self.coordinator.config.get("optimizer_enabled", True),
                 simulated_requests=self.coordinator.commands.estimated_requests,
                 simulation_trace=self.coordinator.commands.trace,
+                charger_capabilities={
+                    c["id"]: {
+                        "supported": sorted(capabilities(self.hass, c)),
+                        "control_enabled": False,
+                    }
+                    for c in self.coordinator.config.get("chargers", [])
+                    if c.get("device")
+                },
                 price_consumers=data.get("price_status", {}),
             )
         elif self.forecast:

@@ -4,6 +4,7 @@ Only reads existing HA states: never refreshes a provider or wakes a vehicle.
 Provider order is configured per logical vehicle, independent of vehicle names.
 """
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
@@ -20,6 +21,27 @@ TRANSLATIONS = {
     "power": {"charging_power", "charge_power"},
     "odometer": {"odometer"},
 }
+
+
+def physical_keys(hass, device_id):
+    """Exact registry VIN evidence only; no names, network reads or fuzzy merging.
+
+    Absence of a VIN is unknown identity, not proof that two devices differ. Raw
+    identifiers are used transiently for equality and never published in diagnostics.
+    """
+    device = dr.async_get(hass).async_get(device_id)
+    if device is None:
+        return set()
+    values = [
+        value
+        for domain, value in device.identifiers
+        if domain in {"tesla", "tesla_custom", "tesla_fleet"}
+    ]
+    if (device.manufacturer or "").lower() == "tesla" and device.serial_number:
+        values.append(device.serial_number)
+    return {
+        value.upper() for value in values if re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", value.upper())
+    }
 
 
 def discover(hass, device_id):
@@ -111,14 +133,23 @@ class VehicleRegistry:
         device = provider.get("device")
         if not device or not dr.async_get(self.hass).async_get(device):
             return None
+        identities = physical_keys(self.hass, device)
         owners = {
             v["id"]
             for v in self.vehicles
             for p in v.get("providers", [])
             if p.get("device") == device
+            or (identities and identities & physical_keys(self.hass, p.get("device")))
         }
+        logical = next(
+            (v for v in self.vehicles if any(p is provider for p in v.get("providers", []))), {}
+        )
+        logical_keys = set().union(
+            *(physical_keys(self.hass, p.get("device")) for p in logical.get("providers", []))
+        )
         if (
-            len(owners) != 1
+            len(logical_keys) > 1
+            or len(owners) != 1
             or entity is None
             or entity.platform == "ev_charge_manager"
             or entity.id != ref

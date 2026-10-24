@@ -13,7 +13,7 @@ from homeassistant.helpers import selector
 from .chargers import discover_status
 from .const import DOMAIN, NAME
 from .price_components import validate_rules
-from .vehicle import FIELDS, discover
+from .vehicle import FIELDS, discover, physical_keys
 
 
 def entity(domain=None):
@@ -213,10 +213,22 @@ class Editor:
             for v in self.config["vehicles"]
             for p in v["providers"]
         }
+        choices.update(
+            {
+                f"charger:{c['id']}": "Charger / " + c["name"]
+                for c in self.config["chargers"]
+                if c.get("device")
+            }
+        )
         if not choices:
             return self.async_abort(reason="no_providers")
         if user_input:
             vehicle, provider = user_input["provider"].split(":", 1)
+            if vehicle == "charger":
+                self.command_provider = next(
+                    c for c in self.config["chargers"] if c["id"] == provider
+                )
+                return await self.async_step_command_fields()
             self.command_provider = next(
                 p
                 for v in self.config["vehicles"]
@@ -399,7 +411,19 @@ class Editor:
                 vehicle = next(
                     v for v in self.config["vehicles"] if v["id"] == self.provider["vehicle"]
                 )
-                if any(
+                identities = physical_keys(self.hass, self.provider["device"])
+                existing_identities = set().union(
+                    *(physical_keys(self.hass, p["device"]) for p in vehicle["providers"])
+                )
+                if identities and existing_identities and identities != existing_identities:
+                    errors["base"] = "conflicting_physical_vehicle"
+                elif identities and any(
+                    v["id"] != vehicle["id"] and identities & physical_keys(self.hass, p["device"])
+                    for v in self.config["vehicles"]
+                    for p in v["providers"]
+                ):
+                    errors["base"] = "duplicate_physical_vehicle"
+                elif any(
                     p["device"] == self.provider["device"]
                     and not (
                         v["id"] == self.provider["vehicle"]
