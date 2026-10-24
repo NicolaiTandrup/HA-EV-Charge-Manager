@@ -48,18 +48,22 @@ Verified-ranges draft **#19**, branch `feat/verified-price-ranges`, code `e484f5
 All six exact-head remote push/PR tests/hassfest/HACS checks passed. Independently
 READY local-day ranges preserve today's usable prices before tomorrow publication.
 
-Active branch `feat/charger-registry-configuration`, based on #19. Checkpoint subject
-`Discover charger sources and preserve verified registry ownership`:
-**196 local tests passed, zero skips, 92% coverage**, Ruff/format and official local
-hassfest passed (1 integration, 0 invalid). New remote checks pending push.
-Charger status mappings now pin registry UUIDs, follow verified entity renames,
-persist reconciled references and fail closed on reparent/recreate/duplicate device.
-Legacy unbound statuses remain read-only migration observations, never commissioning.
-Native discovery proposes only unambiguous semantic mappings for review. The real
-HA lifecycle regression exercises discovery/options, loaded association, rename
-continuity and fail-closed device reassignment. Native external-site forms expose
-existing boost/tie/margin policies; vehicle forms support offset-aware departure
-sensors using the preserved planner behavior. Existing thresholds remain unchanged.
+Charger registry draft **#20**, branch `feat/charger-registry-configuration`, head
+`4f2205f`: 196 local tests, zero skipped, 92% coverage, Ruff/format/local hassfest
+passed. All six exact-head remote push/PR tests/hassfest/HACS checks passed. Native
+charger discovery, registry-rename/reparent guards and site/departure policy fields
+are complete for mocked/read-only review; physical adapter acceptance is unrun.
+
+Active branch `feat/calendar-measured-history`, based on #20. Checkpoint subject
+`Persist observed calendar energy cost and distance reports`:
+**200 local tests passed, zero skips, 92% coverage**; Ruff/format passed. Official
+local hassfest passed (1 integration, 0 invalid); remote checks pending publication. Calendar
+regressions failed first, then passed: exact local-midnight price/energy splitting,
+negative cost credit, unpriced energy, day/week/month/year boundaries, dated global
+distance increments, persistence/restart and legacy lifetime totals without invented
+dates. Native period entities expose observed-bucket-only coverage and reset dates.
+Ledger timezone is pinned on first dated measurements; no retrospective cost rewrite,
+retention pruning, live commands or production changes.
 
 ## Completed (do not repeat)
 
@@ -116,10 +120,11 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Publish charger registry draft based on #19 and check exact-head CI. Next add
-dated measured-history day/week/month/year totals without inventing old dates,
-then broader multi-site parity and migration/acceptance documentation. Add install/atomic rollback/physical acceptance docs using offline recorded
-fixtures, with no simultaneous legacy/new Nord Pool broker requirement.
+Publish calendar-history draft based on #20 and check exact-head CI. Then add
+broader concurrent multi-site/reconfiguration tests and installation, offline parity,
+owner-approved atomic migration/rollback and hardware acceptance documentation.
+Keep remaining real-control persistence/authority and provider-version gaps explicit;
+passing mocks cannot grant real control or authorize prerelease publication.
 
 Original Brain/Optimizer exports are available and unchanged. The complete original
 Energy Price Broker v2.2 export/recorded outputs are **not present** in this workspace

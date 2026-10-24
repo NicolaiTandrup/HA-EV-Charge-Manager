@@ -112,7 +112,7 @@ class SiteOptimizer(OptimizerCoordinator):
                 sampled_at = reading.reported_at
                 if history.sampled_at is not None and sampled_at <= history.sampled_at:
                     continue  # Watchdog reads are not new physical measurements.
-            history.sample_power(sampled_at, power, eligible, slots)
+            history.sample_power(sampled_at, power, eligible, slots, timezone=self.site["timezone"])
         saved = {key: history.persistent() for key, history in self.history.items()}
         self.history_store.async_delay_save(lambda: saved, 1)
 
@@ -365,7 +365,11 @@ class ManagerCoordinator(DataUpdateCoordinator):
                 stable_source = value.provider + ":" + provider["entity_refs"]["odometer"]
                 history = self.distance_history.setdefault(vehicle["id"], History())
                 history.sample_odometer(
-                    stable_source, float(value.value), value.attributes.get("unit_of_measurement")
+                    stable_source,
+                    float(value.value),
+                    value.attributes.get("unit_of_measurement"),
+                    now=value.reported_at,
+                    timezone=self.hass.config.time_zone,
                 )
         distance_saved = {key: h.persistent() for key, h in self.distance_history.items()}
         self.distance_store.async_delay_save(lambda: distance_saved, 1)
