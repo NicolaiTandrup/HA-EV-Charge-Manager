@@ -14,7 +14,12 @@ A unified, modular native Home Assistant custom integration, domain
 `ev_charge_manager`. **Read-only developer preview, not a production controller.**
 Existing Node-RED flows remain the current production baseline. Installing this
 integration never disables or modifies those flows, helpers or HA automations.
-There is no vehicle/charger command transport and no Fleet SDK or direct API client.
+There is no active vehicle/charger transport or Fleet SDK. The dormant
+[mock-tested command executor](docs/command-executor.md) has no default transport
+and is not wired to startup or public services.
+
+Native [provider policies](docs/provider-policies.md) support independent READ/WRITE
+preferences, fallback switches and capability overrides. All controls stay disabled.
 
 ## Four components
 

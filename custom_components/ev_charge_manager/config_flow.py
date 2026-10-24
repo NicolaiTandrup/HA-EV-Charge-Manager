@@ -48,6 +48,7 @@ class Editor:
                 "provider",
                 "manage_provider",
                 "provider_policy",
+                "command_mapping",
                 "site",
                 "legacy_site",
                 "charger",
@@ -192,6 +193,56 @@ class Editor:
                     vol.Required("primary", default=False): bool,
                 }
             ),
+        )
+
+    async def async_step_command_mapping(self, user_input=None):
+        choices = {
+            f"{v['id']}:{p['id']}": v["name"] + " / " + p["id"]
+            for v in self.config["vehicles"]
+            for p in v["providers"]
+        }
+        if not choices:
+            return self.async_abort(reason="no_providers")
+        if user_input:
+            vehicle, provider = user_input["provider"].split(":", 1)
+            self.command_provider = next(
+                p
+                for v in self.config["vehicles"]
+                if v["id"] == vehicle
+                for p in v["providers"]
+                if p["id"] == provider
+            )
+            return await self.async_step_command_fields()
+        return self.async_show_form(
+            step_id="command_mapping",
+            data_schema=vol.Schema({vol.Required("provider"): vol.In(choices)}),
+        )
+
+    async def async_step_command_fields(self, user_input=None):
+        reg = er.async_get(self.hass)
+        errors = {}
+        if user_input is not None:
+            if any(
+                (row := reg.async_get(eid)) is None
+                or row.device_id != self.command_provider["device"]
+                or row.platform == DOMAIN
+                for eid in user_input.values()
+            ):
+                errors["base"] = "invalid_mapping"
+            else:
+                self.command_provider["command_entities"] = {
+                    field: reg.async_get(eid).id for field, eid in user_input.items()
+                }
+                return await self.async_step_menu()
+        schema = {}
+        for field in ("start_stop", "enable_disable", "limit", "current"):
+            row = reg.async_get(self.command_provider.get("command_entities", {}).get(field, ""))
+            marker = vol.Optional(field, default=row.entity_id) if row else vol.Optional(field)
+            schema[marker] = entity(
+                "switch" if field in {"start_stop", "enable_disable"} else "number"
+            )
+        return self.async_show_form(
+            step_id="command_fields", data_schema=vol.Schema(schema), errors=errors
         )
 
     async def async_step_provider_policy(self, user_input=None):
@@ -361,6 +412,14 @@ class Editor:
                         },
                     }
                     if getattr(self, "editing_provider", False):
+                        previous = next(
+                            p for p in vehicle["providers"] if p["id"] == self.provider["id"]
+                        )
+                        if (
+                            previous["device"] == provider["device"]
+                            and "command_entities" in previous
+                        ):
+                            provider["command_entities"] = previous["command_entities"]
                         vehicle["providers"] = [
                             p for p in vehicle["providers"] if p["id"] != self.provider["id"]
                         ]

@@ -56,7 +56,10 @@ authority on first connected observation after restart: a missed unplug cannot b
 proven absent. Persistent authorization across outages requires a charger-provided
 monotonic physical-session identifier before any live implementation.
 
-All command intents pass one simulated ownership/idempotency/budget boundary.
+All public command intents pass one simulated ownership/idempotency/budget boundary.
+A separate dormant injected-transport executor is mock-tested; see
+[executor acceptance boundary](command-executor.md). It is not wired into the
+integration and has no default transport.
 Guest sessions only admit manual ownership. There is no transport, retry loop,
 production flag, vehicle API or charger service dispatch. Command estimates are
 not billing data; external Fleet polling remains outside our ownership.
