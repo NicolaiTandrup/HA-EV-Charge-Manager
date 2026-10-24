@@ -73,6 +73,10 @@ def decode(response, entry_id, site_id, now, start, end, max_age=129600):
     return tuple(slots), verified
 
 
+class PricesUnavailable(ValueError):
+    """A correctly identified producer range is not operationally ready."""
+
+
 class PriceConsumer:
     def __init__(self, hass):
         self.hass = hass
@@ -106,18 +110,42 @@ class PriceConsumer:
             end = utc(
                 (local + timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
             )
-            slots, verified, response = self._lookup(site, start, end, now)
-            if response["revision"] < self.revisions.get(key, 0):
-                raise ValueError("Producer revision rollback")
-            self.tables[key] = slots
-            self.verified[key] = verified
-            self.revisions[key] = response["revision"]
-            self.keys[key] = sha256(str(slots).encode()).hexdigest()
+            # Each local-date subrange must itself be READY. Tomorrow's missing
+            # publication cannot invalidate verified today's prices or actual cost.
+            slots, successes, revisions, unavailable, ranges = [], [], [], [], []
+            cursor = start
+            while cursor < end:
+                local_cursor = cursor.astimezone(ZoneInfo(site["timezone"]))
+                boundary = utc(
+                    (local_cursor + timedelta(days=1)).replace(
+                        hour=0, minute=0, second=0, microsecond=0
+                    )
+                )
+                until = min(boundary, end)
+                try:
+                    rows, verified, response = self._lookup(site, cursor, until, now)
+                except PricesUnavailable as error:
+                    unavailable.append(str(error))
+                else:
+                    if response["revision"] < self.revisions.get(key, 0):
+                        raise ValueError("Producer revision rollback")
+                    slots.extend(rows)
+                    successes.append(verified)
+                    revisions.append(response["revision"])
+                    ranges.append({"start": cursor.isoformat(), "end": until.isoformat()})
+                cursor = until
+            if not successes:
+                raise ValueError("; ".join(unavailable) or "No verified price ranges")
+            self.tables[key] = tuple(slots)
+            self.verified[key] = min(successes)
+            self.revisions[key] = max(revisions)
+            self.keys[key] = sha256(str(tuple(slots)).encode()).hexdigest()
             self.status[key] = {
-                "status": response["status"],
-                "revision": response["revision"],
-                "verified_at": verified.isoformat(),
-                "reason": None,
+                "status": "INCOMPLETE" if unavailable else "READY",
+                "revision": max(revisions),
+                "verified_at": min(successes).isoformat(),
+                "reason": "; ".join(unavailable) or None,
+                "verified_ranges": ranges,
                 "api_version": 1,
             }
         except (
@@ -155,7 +183,9 @@ class PriceConsumer:
         api = import_module(f"custom_components.{DOMAIN}.api").get_api(self.hass, version=1)
         result = api.lookup(site["producer_site"], start, end, now=now)
         if str(result.status) != "READY":
-            raise ValueError(f"{result.status}: {result.reason or 'Producer prices not ready'}")
+            raise PricesUnavailable(
+                f"{result.status}: {result.reason or 'Producer prices not ready'}"
+            )
         expected = int((end - start).total_seconds() / 900)
         if result.expected_slots != expected or result.valid_slots != expected:
             raise ValueError("Producer coverage count mismatch")

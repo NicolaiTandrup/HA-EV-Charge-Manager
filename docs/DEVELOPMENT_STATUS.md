@@ -37,17 +37,22 @@ Provider policy draft **#17**, branch `feat/native-provider-policies`, head `c2a
 All six exact-head remote tests/hassfest/HACS push/PR checks passed. Covers native
 0/1/2/6 fleet setup, edits/removal, independent policies and duplicate charger rejection.
 
-Active branch `feat/mock-command-executor`, based on #17. Checkpoint subject
-`Add dormant mock-tested command executor and reviewed capability mappings`:
-**191 tests passed, zero skipped, 92% coverage**, Ruff/format and official local
-hassfest passed (1 integration, 0 invalid). Remote checks pending publication.
-A failing import regression preceded implementation. Mock HA dispatch matches
-preserved Node-RED switch/number routes. Tests cover service-return vs observation,
-timeouts without duplicate writes/provider fallback, budgets, guests, ownership,
-state freshness, bounds, renames, rebound registry entities and native manual maps.
-Executor is dormant, has no default transport, is not called by startup or public
-services. Native mappings/policies grant no authority. See docs/command-executor.md
-for real commissioning/persistence/acknowledgment acceptance gaps. No live commands.
+Dormant executor draft **#18**, branch `feat/mock-command-executor`, code `e49b357`:
+191 local tests passed, zero skips, 92% coverage; Ruff/format/local hassfest passed.
+All six exact-head remote push/PR tests, hassfest and HACS checks passed. No default
+transport or live startup/service wiring; native review grants no control authority.
+See docs/command-executor.md for actual authority/persistence/hardware acceptance gaps.
+
+Active branch `feat/verified-price-ranges`, based on #18. Checkpoint subject
+`Keep verified current-day prices when tomorrow is unpublished`:
+**193 local tests passed, zero skips, 92% coverage**; Ruff/format passed. Official
+local hassfest passed (1 integration, 0 invalid); remote checks pending push. Regression failed first:
+a whole-range INCOMPLETE result discarded usable today's prices. Now every local-
+date subrange is accepted only if independently READY, with exact coverage. Failed
+ranges contribute nothing; aggregate INCOMPLETE retains explicit verified_ranges.
+Real producer API/ledger tests cover this on 92/96/100-quarter days. No zero fill,
+embedded arithmetic/fetching or planner priority/tie/cadence changes. Offline fixture-
+only command is documented for temporary producer-source unavailability.
 
 ## Completed (do not repeat)
 
@@ -84,11 +89,11 @@ Actual producer API/ledger interoperability is now tested using synthetic inputs
 92/96/100-quarter local days, negative prices, stale readiness and site isolation.
 No source fetching or pricing calculation occurs on consumer reads. This is not
 live two-instance HA/hardware acceptance. API v1 requires complete requested range;
-EV conservatively queries the recent measurement window through next-day midnight.
-Before tomorrow's prices publish this can suppress otherwise feasible today-only
-plans; next work should scope scheduling queries to relevant vehicle deadlines,
-while keeping measured-current-price access separate. Never accept partial ranges
-as READY or restore embedded pricing as fallback.
+EV queries local-date subranges through next-day midnight and retains only
+independently READY ranges. Unpublished tomorrow no longer suppresses verified
+today-only plans/history. Future refinement can scope requests to exact vehicle
+deadlines and isolate historical settlement reads. Never accept partial producer
+ranges as READY or restore embedded pricing as fallback.
 
 Producer Issue #4 records household invoice-backed EWII markup **0.030 DKK/kWh ex
 VAT for June–September 2026 only**. This resolves that historical fact only. Raw
@@ -104,9 +109,8 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Publish dormant-executor draft based on #17 and check exact-head CI. Next isolate
-current measured-cost price lookup from unavailable tomorrow scheduling ranges;
-retain actual API v1 READY-only semantics. Add charger discovery/rename ownership,
+Publish verified-price-ranges draft based on #18 and check exact-head CI. Add
+charger discovery/rename ownership,
 remaining native site policy fields, dated measured history and broader multi-site
 parity. Add install/atomic rollback/physical acceptance docs using offline recorded
 fixtures, with no simultaneous legacy/new Nord Pool broker requirement.
