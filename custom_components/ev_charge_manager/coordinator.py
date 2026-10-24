@@ -13,6 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from .brain import DISCONNECTED, Brain, Reading, normalize
+from .chargers import ChargerRegistry
 from .command import CommandManager
 from .const import DOMAIN
 from .history import History
@@ -153,6 +154,7 @@ class SiteOptimizer(OptimizerCoordinator):
                 "capacity_kwh": v["capacity_kwh"],
                 "max_kw": v["max_kw"],
                 "efficiency": v.get("efficiency", 1),
+                **({"deadline_entity": v["deadline_entity"]} if v.get("deadline_entity") else {}),
                 "soc_entity": f"internal.{v['id']}.soc",
                 "target_entity": f"internal.{v['id']}.target",
                 "connected_entity": f"internal.{v['id']}.cable",
@@ -178,6 +180,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
             self.config.get("stale_seconds", 900),
             self.config.get("snapshot_skew_seconds", 120),
         )
+        self.chargers = ChargerRegistry(hass, self.config.get("chargers", []))
         self.commands = CommandManager(self.config.get("command_budget", 100))
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.sessions")
         self.sessions = Sessions()
@@ -216,6 +219,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         target = "options" if self.entry.options else "data"
         values = dict(getattr(self.entry, target))
         values["vehicles"] = deepcopy(self.registry.vehicles)
+        values["chargers"] = deepcopy(self.config.get("chargers", []))
         self.hass.config_entries.async_update_entry(self.entry, **{target: values})
 
     async def async_load(self):
@@ -268,6 +272,8 @@ class ManagerCoordinator(DataUpdateCoordinator):
         for site in self.config.get("sites", []):
             ids.update(site[k] for k in ("guest_power_entity", "grid_tariff_entity") if site.get(k))
         for vehicle in self.registry.vehicles:
+            if vehicle.get("deadline_entity"):
+                ids.add(vehicle["deadline_entity"])
             for provider in vehicle.get("providers", []):
                 ids.update(provider["fields"].values())
         return ids
@@ -311,7 +317,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     @callback
     def _registry_changed(self, event):
-        if self.registry.reconcile():
+        vehicles_changed = self.registry.reconcile()
+        chargers_changed = self.chargers.reconcile()
+        if vehicles_changed or chargers_changed:
             self.persist_sources()
         self.entry.async_create_task(
             self.hass, self.async_request_refresh(), "Refresh managed snapshots"
@@ -367,7 +375,8 @@ class ManagerCoordinator(DataUpdateCoordinator):
                 if value:
                     states[f"internal.{key}.{field}"] = Reading(value.value, value.reported_at)
         for charger in self.config.get("chargers", []):
-            state = self.hass.states.get(charger["status"])
+            source = self.chargers.source(charger)
+            state = self.hass.states.get(source) if source else None
             if state:
                 states[charger["status"]] = Reading(state.state, state.last_reported)
         rows = self.brain.evaluate(states, now) if self.config.get("brain_enabled", True) else {}

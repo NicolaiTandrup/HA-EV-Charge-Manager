@@ -43,16 +43,23 @@ All six exact-head remote push/PR tests, hassfest and HACS checks passed. No def
 transport or live startup/service wiring; native review grants no control authority.
 See docs/command-executor.md for actual authority/persistence/hardware acceptance gaps.
 
-Active branch `feat/verified-price-ranges`, based on #18. Checkpoint subject
-`Keep verified current-day prices when tomorrow is unpublished`:
-**193 local tests passed, zero skips, 92% coverage**; Ruff/format passed. Official
-local hassfest passed (1 integration, 0 invalid); remote checks pending push. Regression failed first:
-a whole-range INCOMPLETE result discarded usable today's prices. Now every local-
-date subrange is accepted only if independently READY, with exact coverage. Failed
-ranges contribute nothing; aggregate INCOMPLETE retains explicit verified_ranges.
-Real producer API/ledger tests cover this on 92/96/100-quarter days. No zero fill,
-embedded arithmetic/fetching or planner priority/tie/cadence changes. Offline fixture-
-only command is documented for temporary producer-source unavailability.
+Verified-ranges draft **#19**, branch `feat/verified-price-ranges`, code `e484f5d`:
+193 local tests passed, zero skips, 92% coverage; Ruff/format/local hassfest passed.
+All six exact-head remote push/PR tests/hassfest/HACS checks passed. Independently
+READY local-day ranges preserve today's usable prices before tomorrow publication.
+
+Active branch `feat/charger-registry-configuration`, based on #19. Checkpoint subject
+`Discover charger sources and preserve verified registry ownership`:
+**196 local tests passed, zero skips, 92% coverage**, Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). New remote checks pending push.
+Charger status mappings now pin registry UUIDs, follow verified entity renames,
+persist reconciled references and fail closed on reparent/recreate/duplicate device.
+Legacy unbound statuses remain read-only migration observations, never commissioning.
+Native discovery proposes only unambiguous semantic mappings for review. The real
+HA lifecycle regression exercises discovery/options, loaded association, rename
+continuity and fail-closed device reassignment. Native external-site forms expose
+existing boost/tie/margin policies; vehicle forms support offset-aware departure
+sensors using the preserved planner behavior. Existing thresholds remain unchanged.
 
 ## Completed (do not repeat)
 
@@ -109,10 +116,9 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-Publish verified-price-ranges draft based on #18 and check exact-head CI. Add
-charger discovery/rename ownership,
-remaining native site policy fields, dated measured history and broader multi-site
-parity. Add install/atomic rollback/physical acceptance docs using offline recorded
+Publish charger registry draft based on #19 and check exact-head CI. Next add
+dated measured-history day/week/month/year totals without inventing old dates,
+then broader multi-site parity and migration/acceptance documentation. Add install/atomic rollback/physical acceptance docs using offline recorded
 fixtures, with no simultaneous legacy/new Nord Pool broker requirement.
 
 Original Brain/Optimizer exports are available and unchanged. The complete original

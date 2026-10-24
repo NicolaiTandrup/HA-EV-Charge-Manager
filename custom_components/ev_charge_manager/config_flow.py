@@ -10,6 +10,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
+from .chargers import discover_status
 from .const import DOMAIN, NAME
 from .price_components import validate_rules
 from .vehicle import FIELDS, discover
@@ -52,6 +53,7 @@ class Editor:
                 "site",
                 "legacy_site",
                 "charger",
+                "discover_charger",
                 "edit",
                 "remove",
                 "finish",
@@ -74,6 +76,15 @@ class Editor:
 
     def _show_item(self, *, step_id, data_schema, errors=None):
         editing = getattr(self, "editing", None)
+        if step_id == "charger" and not editing:
+            schema = {}
+            for marker, validator in data_schema.schema.items():
+                if str(marker) in getattr(self, "charger_suggestions", {}):
+                    marker = type(marker)(
+                        str(marker), default=self.charger_suggestions[str(marker)]
+                    )
+                schema[marker] = validator
+            data_schema = vol.Schema(schema)
         if editing:
             group, key = editing
             item = next(i for i in self.config[group] if i["id"] == key)
@@ -162,6 +173,7 @@ class Editor:
             data_schema=vol.Schema(
                 {
                     vol.Required("name"): str,
+                    vol.Optional("deadline_entity"): entity("sensor"),
                     vol.Required("capacity_kwh", default=75): vol.All(
                         vol.Coerce(float), vol.Range(min=1, max=500)
                     ),
@@ -491,6 +503,19 @@ class Editor:
                     vol.Required("price_max_age_seconds", default=129600): vol.All(
                         vol.Coerce(int), vol.Range(min=60, max=172800)
                     ),
+                    vol.Required("boost_enabled", default=True): bool,
+                    vol.Required("boost_threshold", default=0.5): vol.All(
+                        vol.Coerce(float), vol.Range(min=-100, max=100)
+                    ),
+                    vol.Required("boost_target", default=80): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=100)
+                    ),
+                    vol.Required("margin_minutes", default=15): vol.All(
+                        vol.Coerce(int), vol.Range(min=0, max=240)
+                    ),
+                    vol.Required("tolerance", default=0.005): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=1)
+                    ),
                     vol.Optional("guest_power_entity"): entity("sensor"),
                 }
             ),
@@ -591,6 +616,20 @@ class Editor:
             errors=errors,
         )
 
+    async def async_step_discover_charger(self, user_input=None):
+        if user_input:
+            device = user_input["device"]
+            suggested = discover_status(self.hass, device)
+            self.charger_suggestions = {
+                "device": device,
+                **({"status": suggested} if suggested else {}),
+            }
+            return await self.async_step_charger()
+        return self.async_show_form(
+            step_id="discover_charger",
+            data_schema=vol.Schema({vol.Required("device"): selector.DeviceSelector()}),
+        )
+
     async def async_step_charger(self, user_input=None):
         errors = {}
         if user_input:
@@ -613,7 +652,8 @@ class Editor:
             ):
                 errors["base"] = "invalid_mapping"
             else:
-                self._save_item("chargers", user_input)
+                self._save_item("chargers", {**user_input, "status_ref": source.id})
+                self.charger_suggestions = {}
                 return await self.async_step_menu()
         return self._show_item(
             step_id="charger",
