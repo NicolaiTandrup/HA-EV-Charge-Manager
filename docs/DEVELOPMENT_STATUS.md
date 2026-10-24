@@ -1,14 +1,18 @@
 # Development handoff
 
-Updated 2026-10-23. Canonical continuation file; read AGENTS.md first.
+Updated 2026-10-24. Canonical continuation file; read AGENTS.md first.
 
 ## Active standalone consumer checkpoint (2026-10-24)
 
 Branch: `feat/price-engine-consumer`, based on PR #12 head
 `9d949c6d0905646d1bbf973ea2edb47846e1607d`. This is a separate draft stack
 extension; no existing PR #11/#12 branch is changed or merged.
-Checkpoint subject: `feat: consume standalone Price Engine API v1 without local pricing`.
-Producer: NicolaiTandrup/HA-Energy-Price-Engine draft PR #7.
+Validated code: `088c8fad00a0eb79fec246e35637d26655e1eb1c`.
+Checkpoint subject: `docs: record green consumer CI and producer handoff`.
+Draft: https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/15.
+Producer: https://github.com/NicolaiTandrup/HA-Energy-Price-Engine/pull/7.
+Producer code `e36e3e455b85a81fe2cf099a08ba4f6c8de37f49`: **78 passed, zero
+skips, 92% coverage**, all six exact-head remote tests/hassfest/HACS passed.
 
 Completed: immutable API v1 final-price adapter; explicit native per-site
 `price_engine_site` selection exclusive of legacy price entity/Nord Pool source;
@@ -29,9 +33,13 @@ DST days, site isolation and stale handling. CI checks out producer exact commit
 hardening. Native HA lifecycle tests prove no consumer fetch/calculation and stale
 prices invalidate forecasts rather than retaining a valid cached plan.
 
-Remaining: push this milestone, open draft to `feat/verified-danish-pricing`, verify
-exact-head remote tests/hassfest/HACS; record actual outcomes here. Official local
-hassfest result must be recorded after it completes. No remote CI claimed yet.
+All SIX exact-head remote push/PR checks passed at consumer code `088c8fa`: tests,
+hassfest and HACS. Official local hassfest: one integration, zero invalid. This
+handoff-only checkpoint changes no validated application code. Its own final SHA
+cannot be recorded in this document; inspect Git and current PR checks.
+
+Next: review PR #15 separately from producer #7 and the original unmerged stack;
+retain explicit source selection and no automatic production migration.
 Read-only owner broker exports still needed for actual household/summer-house parity.
 The conservative consumer requests current quarter through next local-day end, so
 it defers new planning while next-day prices are incomplete. No silent fallback.
