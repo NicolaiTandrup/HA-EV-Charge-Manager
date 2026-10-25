@@ -45,7 +45,9 @@ async def test_prepare_is_durable_before_dispatch_and_restart_never_replays(hass
     # A cached report/new HA startup alone is not session continuity evidence.
     hass.states.async_set("switch.charge", "on")
     assert (await restored.reconcile("one", context())).status == "recovery_required"
-    assert (await restored.reconcile("one", context(), session_verified=True)).status == "observed"
+    assert (
+        await restored.reconcile("one", context(), session_verified=True, observation_verified=True)
+    ).status == "observed"
     transport.assert_not_called()
     disabled = DurableCommandExecutor(
         hass, store=CommandJournalStore(hass, 1, "test.command_journal")
@@ -162,3 +164,21 @@ async def test_actual_ha_swallowed_write_error_and_corrupt_json_fail_closed(hass
     assert (await restored.execute("two", target, context())).status == "journal_error"
     assert await hass.async_add_executor_job(path.read_text) == "{corrupt"
     transport.assert_not_called()
+
+
+async def test_optimistic_ha_echo_cannot_release_durable_uncertainty(hass):
+    target = capabilities(hass, setup_target(hass))["start"]
+    transport = AsyncMock(side_effect=TimeoutError())
+    executor = DurableCommandExecutor(
+        hass, store=CommandJournalStore(hass, 1, "test.optimistic"), transport=transport
+    )
+    await executor.async_load()
+    assert (await executor.execute("one", target, context())).status == "uncertain"
+    hass.states.async_set("switch.charge", "on")  # Could be the integration's own echo.
+    assert (await executor.execute("one", target, context())).status == "uncertain"
+    assert executor.pending[target.device] == "one"
+    assert (
+        await executor.reconcile("one", context(), session_verified=True)
+    ).status == "recovery_required"
+    assert (await executor.execute("two", target, context())).status == "resource_uncertain"
+    assert transport.await_count == 1

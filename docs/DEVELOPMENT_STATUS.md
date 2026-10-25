@@ -136,6 +136,28 @@ backed dispatch/recovery, not approved live control or a published prerelease.
 Normal HACS version distribution still needs a separately owner-approved ref/release;
 the source ZIP and CI artifact allow review/test installation without merging main.
 
+## Final safety follow-up
+
+Packaging draft **#25**, head `1246ccf` (code `6a33783`), passed all six
+exact-head remote checks. Its package is superseded by this safety follow-up.
+
+Active branch `feat/verified-command-reconciliation`, based on #25.
+Checkpoint subject `Keep durable uncertainty latched until verified acknowledgment`.
+**228 tests passed, zero skips, 93% coverage**; Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). New remote checks pending publication.
+A failing regression demonstrated that an optimistic matching HA switch echo
+could release the live journal latch. Native durable execution now retains pending
+requests until explicit physical-session AND independent-acknowledgment attestations
+plus a post-load/attempt fresh matching report. Mere HA echoes, service success,
+duplicate keys or another provider cannot clear it. No public authority-grant or
+reconcile service/transport wiring was added. Actual attestation must be verified
+in separately authorized hardware trials; test flags are not security proof.
+
+Build the latest branch's ZIP; do not install an earlier #25 artifact as though it
+contained this hardening. The archive path stays dist/ev-charge-manager-v0.1.0-beta.1.zip
+and the current local SHA-256 is
+`1619ec87453db12312e4ad89ed65539c9dbab6c5b20aba1f6ee121bd7f2021b9`. No release/tag/main merge/live commands.
+
 ## Completed (do not repeat)
 
 - Prior vehicle registry/provider/snapshot, Brain guest/simulation and optimizer
@@ -227,7 +249,7 @@ PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/
 /workspace/ev-manager-venv/bin/ruff format --check custom_components tests scripts
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
 gh pr checks 24 --repo NicolaiTandrup/HA-EV-Charge-Manager
-gh pr checks 25 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 26 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 
