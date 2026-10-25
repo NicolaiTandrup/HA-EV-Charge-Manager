@@ -15,6 +15,7 @@ async def async_get_config_entry_diagnostics(hass, entry):
         "optimizer_enabled": c.config.get("optimizer_enabled", True),
         "association_modes": dict(Counter(r["mode"] for r in c.data["assignments"].values())),
         "simulated_requests": c.commands.estimated_requests,
+        "command_journal": c.executor.diagnostics(),
         "snapshot_issues": dict(
             Counter(
                 issue for health in c.data["vehicle_health"].values() for issue in health["issues"]
