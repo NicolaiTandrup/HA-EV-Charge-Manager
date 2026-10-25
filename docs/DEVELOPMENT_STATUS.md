@@ -159,7 +159,16 @@ in separately authorized hardware trials; test flags are not security proof.
 Build the latest branch's ZIP; do not install an earlier #25 artifact as though it
 contained this hardening. The archive path stays dist/ev-charge-manager-v0.1.0-beta.1.zip
 and the current local SHA-256 is
-`1619ec87453db12312e4ad89ed65539c9dbab6c5b20aba1f6ee121bd7f2021b9`. No release/tag/main merge/live commands.
+`ff692b6f3b15c187e09d6435479b8923234eb52e0ebad175f77af47913ba45c6`. No release/tag/main merge/live commands.
+
+Latest coherent checkpoint subject: `Reject empty journal envelopes and invalid persisted bindings`.
+The real-file failure matrix also covers valid JSON with null data and missing/
+invalid physical binding fields: existing files cannot masquerade as a fresh
+installation. **228 tests passed, zero skips, 93% coverage**, Ruff/format and
+official local hassfest passed after this hardening; the local ZIP was rebuilt.
+Earlier c650c6f and handoff 0a79de6 checks were green. Check the exact latest head's
+remote receipt on PR #26 (tests/hassfest/HACS plus uploaded candidate artifact);
+that receipt is posted after CI finishes without changing runtime code again.
 
 ## Completed (do not repeat)
 

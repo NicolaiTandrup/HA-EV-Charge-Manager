@@ -164,6 +164,20 @@ async def test_actual_ha_swallowed_write_error_and_corrupt_json_fail_closed(hass
     assert (await restored.execute("two", target, context())).status == "journal_error"
     assert await hass.async_add_executor_job(path.read_text) == "{corrupt"
     transport.assert_not_called()
+    import json
+
+    null_envelope = json.dumps({"version": 1, "minor_version": 1, "key": store.key, "data": None})
+    await hass.async_add_executor_job(path.write_text, null_envelope)
+    await restored.async_load()
+    assert (await restored.execute("null", target, context())).status == "journal_error"
+    transport.assert_not_called()
+    invalid = executor.snapshot()
+    invalid["records"]["one"]["target"]["device"] = None
+    envelope = json.dumps({"version": 1, "minor_version": 1, "key": store.key, "data": invalid})
+    await hass.async_add_executor_job(path.write_text, envelope)
+    await restored.async_load()
+    assert (await restored.execute("binding", target, context())).status == "journal_error"
+    transport.assert_not_called()
 
 
 async def test_optimistic_ha_echo_cannot_release_durable_uncertainty(hass):

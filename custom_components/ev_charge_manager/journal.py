@@ -34,7 +34,7 @@ class CommandJournalStore(Store):
             or envelope["version"] != self.version
             or envelope.get("key") != self.key
             or envelope.get("minor_version", 1) != self.minor_version
-            or "data" not in envelope
+            or not isinstance(envelope.get("data"), dict)
         ):
             raise ValueError("Invalid command journal storage envelope")
         return envelope["data"]
@@ -102,7 +102,21 @@ class DurableCommandExecutor(CommandExecutor):
                     attempted = datetime.fromisoformat(row["attempted_at"])
                     value = row["value"]
                     if (
-                        not key
+                        not all(
+                            isinstance(v, str) and v
+                            for v in (
+                                target.provider,
+                                target.device,
+                                target.registry_id,
+                                target.action,
+                                target.domain,
+                                target.service,
+                                row["session_id"],
+                            )
+                        )
+                        or target.action
+                        not in {"start", "stop", "limit", "current", "enable", "disable"}
+                        or not key
                         or not isinstance(key, str)
                         or attempted.tzinfo is None
                         or not row["session_id"]

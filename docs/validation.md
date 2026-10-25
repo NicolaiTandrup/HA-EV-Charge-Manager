@@ -155,3 +155,9 @@ durable pending requests now require independent acknowledgment attestation as
 well as physical-session continuity and a newer matching report. Review artifact
 run 40177571289 supersedes prior package builds. No real physical acceptance,
 control activation, merge, tag, release or production change occurred.
+
+Final storage-shape follow-up rejects an existing null-data envelope and invalid
+persisted target bindings instead of treating them as a new journal. Real-file
+regression matrix passes: 228 tests, zero skips, 93% coverage; Ruff/format and
+official local hassfest passed. Latest archive was rebuilt; SHA and exact remote
+receipt continuation are recorded in DEVELOPMENT_STATUS.md / PR #26.
