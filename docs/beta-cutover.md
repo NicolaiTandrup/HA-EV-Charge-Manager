@@ -53,8 +53,9 @@ margins, Cheap Boost and shared-site limits using recorded vehicle inputs too.
 - Actual installed Tesla/Easee capabilities and responses verified; mapped entity
   state is not proof of energy delivery. Unknown/stale/conflicting data must inhibit
   commands. No wakeups or duplicate ambiguous writes; verify API budget observations.
-- Dormant executor still needs durable per-device commissioning, persisted uncertain
-  command recovery and verifiable single-controller handover before transport wiring.
+- Durable command reservation/recovery is now mock-tested, including real HA file
+  failures. Live commissioning still needs verified per-device authority, trustworthy
+  physical-session continuity and single-controller handover before transport wiring.
   Mock tests alone do not satisfy these gates. See command-executor.md.
 - Explicit physical-session continuity across outages, unplug/replug races, multi-day
   zero-power guests and manually authorized unknown cars tested. Preview restart

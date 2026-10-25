@@ -5,3 +5,4 @@ __pycache__/
 htmlcov/
 .venv/
 price-engine-reference/
+dist/

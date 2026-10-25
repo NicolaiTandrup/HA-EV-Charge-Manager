@@ -121,3 +121,29 @@ No installed HA OS/hardware acceptance or full household broker/invoice parity i
 claimed. Missing full broker export and raw recorded household inputs are explicit.
 Legacy exports' SHA-256 hashes are unchanged. No live commands, merge, prerelease,
 production HA/Node-RED changes or cutover occurred.
+
+## Proposed beta.1 continuation (2026-10-25)
+
+PR #23 code 3527c97 passed 216 tests; PR #24 code 58e0d3c passed 220.
+Both passed all six exact-head remote push/PR tests, hassfest and HACS checks.
+Final proposed candidate: 227 passed, zero skipped, 93% integration coverage;
+Ruff check/format including scripts passed. Journal tests use real temporary HA
+atomic files, including swallowed write errors, corrupt JSON, crash/cancellation
+and post-recovery reconciliation without replay. No default transport is installed.
+
+Eight original JavaScript oracle cases run (five optimizer, three Brain). The
+legacy Brain's defaultCar ambiguity guess is intentionally rejected per Issue #3.
+Package tests verify deterministic complete source ZIP, compile packaged modules
+and exclude cache/storage files. Native tests cover wrong PE site mapping,
+WRITE-only provider review, individual charger/power/journal entities and the
+existing 0/1/2/6 multi-device/site/restart/failure matrix.
+
+No installed-version physical provider/HA OS acceptance, real actuation, full raw
+broker/invoice parity, live cutover or release is claimed. Check the handoff for
+the exact final pushed head and remote validation receipt.
+
+Final beta candidate code 6a337833f9124fca4e4c60eb3c693661444f1014 passed all six
+remote push/PR tests, hassfest and HACS checks. CI artifact metadata confirms run
+40177165226 / artifact 12592382233, matching head and unexpired. Optional artifact
+round-trip download was blocked by HTTP 403 at result storage; CI/local byte
+identity is not claimed. Local archive determinism/integrity/compilation are tested.

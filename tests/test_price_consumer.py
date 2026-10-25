@@ -269,7 +269,7 @@ async def test_native_site_configuration_contains_consumer_mapping_not_tariffs(h
             "timezone": "Europe/Copenhagen",
             "grid_kw": 11,
             "producer_entry": producer.entry_id,
-            "producer_site": "producer-home",
+            "producer_site": "producer_home",
         },
     )
     assert flow["type"] == "menu"
@@ -357,3 +357,29 @@ async def test_unpublished_tomorrow_does_not_discard_verified_today(hass):
     assert consumer.status["home"]["status"] == "INCOMPLETE"
     assert "INCOMPLETE" in consumer.status["home"]["reason"]
     producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
+
+
+async def test_native_site_rejects_wrong_producer_site_before_saving(hass):
+    from custom_components.ev_charge_manager.config_flow import defaults
+
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "actual_site"})
+    producer.add_to_hass(hass)
+    entry = MockConfigEntry(domain="ev_charge_manager", data=defaults())
+    entry.add_to_hass(hass)
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    fid = flow["flow_id"]
+    await hass.config_entries.options.async_configure(fid, {"next_step_id": "site"})
+    data = {
+        "id": "home",
+        "name": "Home",
+        "zone_state": "home",
+        "timezone": "Europe/Copenhagen",
+        "grid_kw": 11,
+        "producer_entry": producer.entry_id,
+        "producer_site": "another_site",
+    }
+    flow = await hass.config_entries.options.async_configure(fid, data)
+    assert flow["type"] == "form" and flow["errors"]["base"] == "invalid_mapping"
+    data["producer_site"] = "actual_site"
+    flow = await hass.config_entries.options.async_configure(fid, data)
+    assert flow["type"] == "menu"

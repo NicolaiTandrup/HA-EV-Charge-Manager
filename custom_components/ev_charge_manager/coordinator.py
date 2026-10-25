@@ -418,6 +418,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
                 source_device=charger.get("device"),
             )
             session_rows[charger["id"]] = {
+                "reported_status": normalize(status) if status else None,
                 "session_id": session.id if session else None,
                 "simulated_guest_authorized": session.authorized if session else False,
                 "known_vehicle": session.vehicle if session else None,

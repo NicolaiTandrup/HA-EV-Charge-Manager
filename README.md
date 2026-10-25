@@ -1,5 +1,9 @@
 # EV Charge Manager
 
+Proposed **v0.1.0-beta.1**: read-only candidate archive and CI artifact; no release
+or production control is enabled. Build/install steps are in
+[beta installation](docs/beta-installation.md).
+
 **Architecture update (2026-10-24):** [HA-Energy-Price-Engine](https://github.com/NicolaiTandrup/HA-Energy-Price-Engine)
 is the authoritative price producer. New sites select its config entry and site;
 EV consumes verified final prices through the [producer-owned API v1](docs/contracts/price-consumer-v1.md).

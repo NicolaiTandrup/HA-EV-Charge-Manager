@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
@@ -398,9 +399,9 @@ class Editor:
 
     async def async_step_fields(self, user_input=None):
         errors = {}
-        if user_input:
+        if user_input is not None:
             reg = er.async_get(self.hass)
-            if any(
+            if dr.async_get(self.hass).async_get(self.provider["device"]) is None or any(
                 (e := reg.async_get(eid)) is None
                 or e.platform == DOMAIN
                 or e.device_id != self.provider["device"]
@@ -496,6 +497,9 @@ class Editor:
                 producer = self.hass.config_entries.async_get_entry(user_input["producer_entry"])
                 if producer is None or producer.domain != "ha_energy_price_engine":
                     raise ValueError("Select the authoritative Price Engine entry")
+                producer_settings = {**producer.data, **producer.options}
+                if producer_settings.get("id") != user_input["producer_site"]:
+                    raise ValueError("Selected producer entry does not own this pricing site")
                 if any(
                     (s["id"] == user_input["id"] or s["zone_state"] == user_input["zone_state"])
                     and not self._is_editing("sites", s["id"])
