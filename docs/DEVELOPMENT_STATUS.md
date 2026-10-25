@@ -106,7 +106,7 @@ hassfest and all six exact-head remote checks passed. Profiles use HA Fleet
 evidence. Location excludes destination/route; absent translation keys are handled
 only through verified whole vendor unique-ID contracts. Manual overrides remain.
 
-Active branch `feat/beta-candidate-package`, draft **#25**, based on #24. Checkpoint subject:
+Previous packaging branch `feat/beta-candidate-package`, draft **#25**, based on #24. Checkpoint subject:
 `Package proposed read-only beta and validate native status and legacy parity`.
 **227 tests passed, zero skips, 93% coverage**; Ruff/format including scripts passed.
 Official local hassfest passed (1 integration, 0 invalid). Code checkpoint
@@ -136,15 +136,18 @@ backed dispatch/recovery, not approved live control or a published prerelease.
 Normal HACS version distribution still needs a separately owner-approved ref/release;
 the source ZIP and CI artifact allow review/test installation without merging main.
 
-## Final safety follow-up
+## Active checkpoint: final proposed beta.1
 
 Packaging draft **#25**, head `1246ccf` (code `6a33783`), passed all six
 exact-head remote checks. Its package is superseded by this safety follow-up.
 
-Active branch `feat/verified-command-reconciliation`, based on #25.
+Active branch `feat/verified-command-reconciliation`, draft **#26**, based on #25.
 Checkpoint subject `Keep durable uncertainty latched until verified acknowledgment`.
 **228 tests passed, zero skips, 93% coverage**; Ruff/format and official local
-hassfest passed (1 integration, 0 invalid). New remote checks pending publication.
+hassfest passed (1 integration, 0 invalid). Code `c650c6f` passed all six exact-head
+remote push/PR tests, hassfest and HACS checks. CI built the superseding review
+artifact in run 40177571289. The following handoff-only commit records this evidence;
+substantive code is unchanged.
 A failing regression demonstrated that an optimistic matching HA switch echo
 could release the live journal latch. Native durable execution now retains pending
 requests until explicit physical-session AND independent-acknowledgment attestations

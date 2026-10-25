@@ -147,3 +147,11 @@ remote push/PR tests, hassfest and HACS checks. CI artifact metadata confirms ru
 40177165226 / artifact 12592382233, matching head and unexpired. Optional artifact
 round-trip download was blocked by HTTP 403 at result storage; CI/local byte
 identity is not claimed. Local archive determinism/integrity/compilation are tested.
+
+Final acknowledgment hardening c650c6f passed 228 local tests, zero skipped,
+93% coverage, Ruff/format and official local hassfest. All six exact-head remote
+push/PR tests/hassfest/HACS passed. The optimistic-report regression failed first;
+durable pending requests now require independent acknowledgment attestation as
+well as physical-session continuity and a newer matching report. Review artifact
+run 40177571289 supersedes prior package builds. No real physical acceptance,
+control activation, merge, tag, release or production change occurred.
