@@ -86,30 +86,35 @@ household recorded outputs/invoices remain missing; no full household parity cla
 **Readiness:** installable native read-only development candidate, NOT a live-control
 beta or published prerelease. HACS metadata CI is validated; main has not been merged
 and ordinary HACS candidate distribution needs separate owner-approved ref/release.
-Dormant command executor needs durable per-device authority/uncertain-write recovery
-and installed-version/hardware acceptance before live wiring. All drafts remain open.
+Durable command recovery is now mock-tested in #23. Physical-session authority,
+installed-version/hardware acceptance and live wiring remain unapproved. All drafts remain open.
 
-## Current continuation: durable commands
+## Current continuation: provider compatibility
 
-Active branch `feat/durable-command-journal`, based on #22 head `2a11518`.
-Checkpoint subject `Persist command reservations and fail closed during recovery`.
-**216 tests passed, zero skipped, 92% coverage**; Ruff/format and official local
-hassfest passed (1 integration, 0 invalid); remote checks pending publication.
-The executor now has a
-native per-entry durable journal, no default transport, disk-verified write-ahead
-reservation, persistent estimates/idempotency/ownership, no restart replay and
-explicit post-recovery observation plus verified session-continuity gates.
-HA Store's swallowed write errors and corrupt-to-empty behavior are explicitly
-guarded. Corrupt journals are preserved and execution inhibited. Native startup
-loads diagnostic state only; simulation services do not dispatch.
-Regression tests failed before implementation, then exercised real HA atomic
-files, crash/cancellation, save failures and restart reconciliation.
+Durable journal draft **#23**, branch `feat/durable-command-journal`, code
+`3527c97`, is based on #22. **216 tests passed, zero skips, 92% coverage**,
+Ruff/format and official local hassfest passed. All six exact-head remote push/PR
+tests, hassfest and HACS checks passed. Reservations are verified on disk before
+mock dispatch; corrupt/failed journals inhibit control, and restart never replays.
+Recovery needs explicit physical-session continuity plus fresh post-load observation.
+Native startup loads journal diagnostics with transport disabled.
 
-Next independent beta blocker: provider adapter profiles must reflect real
-installed Tesla Fleet semantics (2026.10.2 uses charge_state_* translation keys)
-while preserving generic/manual mappings and never guessing unsupported commands.
-Then finish proposed beta artifact/version metadata and native status coverage;
-no tag/release, merge, HA deployment or live transport activation is authorized.
+Active branch `feat/provider-adapter-profiles`, based on #23. Checkpoint subject
+`Resolve verified Tesla and Easee registry semantics through provider profiles`.
+Profiles use actual HA Fleet 2026.10.2 and pinned public Custom/Easee source
+metadata; see docs/provider-adapters.md for exact evidence and boundaries.
+Regression tests failed before the fix. Correct current-location selection excludes
+destination/route trackers; Fleet charge_state_* and Easee easee_status/is_enabled
+keys resolve correctly; Custom without translation keys uses its full verified
+VIN+type registry unique-ID contract. Ambiguity and name-only matches are rejected.
+Manual reviewed overrides, provider precedence and all safety gates remain intact.
+**220 tests passed, zero skips, 92% coverage**; Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). Remote checks pending publication.
+No hardware acceptance claimed.
+
+Next: improve native per-charger/current-power/journal status entities, prepare the
+proposed beta artifact without publishing, and broaden executable old Brain traces.
+Do not recreate the completed journal or earlier config/provider/history work.
 
 ## Completed (do not repeat)
 
