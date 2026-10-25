@@ -1,8 +1,8 @@
 # Dormant command executor and acceptance boundary
 
 The integration continues to expose simulations only. `CommandExecutor` has
-**no transport by default**, is not created by startup, and is not called by the
-public simulation services. No UI switch grants live control. Tests alone inject
+**no transport by default**. Startup now creates the disabled journal-backed
+executor for recovery diagnostics; public simulation services never call dispatch. No UI switch grants live control. Tests alone inject
 an in-memory mocked HA service registry or AsyncMock. Future transport wiring,
 durable commissioning, ownership handover and physical acceptance require review
 and explicit owner authorization; none is implied by this module.

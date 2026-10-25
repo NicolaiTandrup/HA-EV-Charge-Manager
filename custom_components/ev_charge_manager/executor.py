@@ -14,6 +14,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
+from .providers import adapter
 from .vehicle import provider_order
 
 
@@ -55,7 +56,7 @@ def capabilities(hass, provider):
         if entity.disabled_by or entity.platform == "ev_charge_manager":
             continue
         domain = entity.domain
-        key = entity.translation_key
+        key = adapter(entity).semantic(entity)
         routes = []
         if domain == "switch" and key in {"charging", "charger"}:
             routes = [("start", "turn_on", "on"), ("stop", "turn_off", "off")]

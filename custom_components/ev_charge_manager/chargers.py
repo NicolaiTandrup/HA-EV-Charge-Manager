@@ -3,13 +3,15 @@
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from .providers import adapter
+
 
 def discover_status(hass, device):
     rows = [
         e.entity_id
         for e in er.async_entries_for_device(er.async_get(hass), device)
         if e.domain == "sensor"
-        and e.translation_key in {"status", "charger_status"}
+        and adapter(e).semantic(e) in {"status", "charger_status"}
         and not e.disabled_by
         and e.platform != "ev_charge_manager"
     ]

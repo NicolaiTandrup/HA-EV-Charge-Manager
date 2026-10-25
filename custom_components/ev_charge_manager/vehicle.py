@@ -12,6 +12,8 @@ from math import isfinite
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 
+from .providers import adapter
+
 FIELDS = {"soc", "target", "cable", "tracker", "charging", "power", "odometer"}
 TRANSLATIONS = {
     "soc": {"battery_level", "battery"},
@@ -50,12 +52,22 @@ def discover(hass, device_id):
     for entity in er.async_entries_for_device(er.async_get(hass), device_id):
         if entity.disabled_by:
             continue
-        domain = entity.entity_id.split(".")[0]
-        if domain == "device_tracker":
+        if adapter(entity).location(entity):
             found["tracker"].append(entity.entity_id)
         for field, keys in TRANSLATIONS.items():
-            if entity.translation_key in keys:
+            if adapter(entity).semantic(entity) in keys:
                 found[field].append(entity.entity_id)
+    for field in ("charging", "target"):
+        candidates = found[field]
+        if len(candidates) > 1 and all(
+            er.async_get(hass).async_get(eid).platform in {"tesla_custom", "tesla_fleet"}
+            for eid in candidates
+        ):
+            for domain in ("binary_sensor", "switch") if field == "charging" else ("number",):
+                preferred = [eid for eid in candidates if eid.startswith(domain + ".")]
+                if preferred:
+                    found[field] = preferred
+                    break
     return {field: values[0] for field, values in found.items() if len(values) == 1}
 
 
