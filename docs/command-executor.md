@@ -42,3 +42,28 @@ The transport and commissioning flags are developer interfaces, not security pro
 of real HA ownership. Real control must bind them to durable per-device authority,
 exclude Node-RED writers, persist uncertain requests and reconcile actual upstream
 acknowledgments. Passing these tests is not authorization to wire a transport.
+
+## Durable journal and recovery (2026-10-25)
+
+Native startup now loads one HA-owned command journal per CM config entry, with no
+transport enabled. Reservations (intent, registry target, session/owner, request
+count and uncertain outcome) are atomically saved and read back from disk before
+an injected test transport is called. HA Store can swallow write errors; the
+journal verifies actual disk content rather than trusting its return or cache.
+Unreadable/corrupt/unsupported journals inhibit execution without overwriting them.
+
+After restart unresolved requests reserve their physical device and require
+explicit reconciliation; no key, alternate provider or different session can
+automatically replay them. Read-only reconciliation requires separately verified
+physical-session continuity and a fresh matching entity report after journal load,
+plus current registry/session/commissioning guards. A cached startup state alone
+is insufficient. There is no public reconcile/clear-uncertainty service.
+
+Counts, unresolved/recovery state and sanitized storage errors appear in native
+status/diagnostics. Request estimates persist across restart (not a billing/API
+provider meter); independent integration polling is outside CM's accounting.
+Completed idempotency records and ownership survive; no unsafe pruning is added.
+Tests use actual atomic HA file writes, crash/cancellation windows, failed prepare
+and result writes, malformed JSON, restart with disabled transport and newer-state
+reconciliation. This removes in-memory-only recovery; physical continuity evidence
+and future live commissioning wiring still require installed-device acceptance.

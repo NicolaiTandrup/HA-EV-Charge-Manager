@@ -1,6 +1,6 @@
 # Development handoff
 
-Updated 2026-10-24. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
+Updated 2026-10-25. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
 
 ## Owner architecture decision / PR stack
 
@@ -88,6 +88,28 @@ beta or published prerelease. HACS metadata CI is validated; main has not been m
 and ordinary HACS candidate distribution needs separate owner-approved ref/release.
 Dormant command executor needs durable per-device authority/uncertain-write recovery
 and installed-version/hardware acceptance before live wiring. All drafts remain open.
+
+## Current continuation: durable commands
+
+Active branch `feat/durable-command-journal`, based on #22 head `2a11518`.
+Checkpoint subject `Persist command reservations and fail closed during recovery`.
+**216 tests passed, zero skipped, 92% coverage**; Ruff/format and official local
+hassfest passed (1 integration, 0 invalid); remote checks pending publication.
+The executor now has a
+native per-entry durable journal, no default transport, disk-verified write-ahead
+reservation, persistent estimates/idempotency/ownership, no restart replay and
+explicit post-recovery observation plus verified session-continuity gates.
+HA Store's swallowed write errors and corrupt-to-empty behavior are explicitly
+guarded. Corrupt journals are preserved and execution inhibited. Native startup
+loads diagnostic state only; simulation services do not dispatch.
+Regression tests failed before implementation, then exercised real HA atomic
+files, crash/cancellation, save failures and restart reconciliation.
+
+Next independent beta blocker: provider adapter profiles must reflect real
+installed Tesla Fleet semantics (2026.10.2 uses charge_state_* translation keys)
+while preserving generic/manual mappings and never guessing unsupported commands.
+Then finish proposed beta artifact/version metadata and native status coverage;
+no tag/release, merge, HA deployment or live transport activation is authorized.
 
 ## Completed (do not repeat)
 

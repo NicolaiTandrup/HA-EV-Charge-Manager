@@ -156,6 +156,7 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             attrs.update(
                 brain_enabled=self.coordinator.config.get("brain_enabled", True),
                 optimizer_enabled=self.coordinator.config.get("optimizer_enabled", True),
+                command_journal=self.coordinator.executor.diagnostics(),
                 simulated_requests=self.coordinator.commands.estimated_requests,
                 simulation_trace=self.coordinator.commands.trace,
                 charger_capabilities={

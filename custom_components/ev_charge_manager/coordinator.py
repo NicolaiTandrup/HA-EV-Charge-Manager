@@ -17,6 +17,7 @@ from .chargers import ChargerRegistry
 from .command import CommandManager
 from .const import DOMAIN
 from .history import History
+from .journal import CommandJournalStore, DurableCommandExecutor
 from .optimizer import OptimizerCoordinator
 from .price_consumer import EVENT as PRICE_EVENT
 from .price_consumer import PriceConsumer
@@ -182,6 +183,11 @@ class ManagerCoordinator(DataUpdateCoordinator):
         )
         self.chargers = ChargerRegistry(hass, self.config.get("chargers", []))
         self.commands = CommandManager(self.config.get("command_budget", 100))
+        self.executor = DurableCommandExecutor(
+            hass,
+            store=CommandJournalStore(hass, 1, f"{DOMAIN}.{entry.entry_id}.command_journal"),
+            budget=self.config.get("command_budget", 100),
+        )
         self.store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.sessions")
         self.sessions = Sessions()
         self.distance_store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.distance")
@@ -223,6 +229,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.hass.config_entries.async_update_entry(self.entry, **{target: values})
 
     async def async_load(self):
+        await self.executor.async_load()
         self.persist_sources()
         for key, record in (await self.distance_store.async_load() or {}).items():
             try:
