@@ -60,7 +60,7 @@ passed. All six exact-head remote push/PR tests/hassfest/HACS checks passed. New
 observed date buckets support day/week/month/year entities, exact local-midnight
 splitting, unpriced energy and negative cost. Legacy lifetime totals are not dated.
 
-Active branch `feat/beta-readiness`, draft **#22**, based on #21. Checkpoint subject
+Previous cumulative branch `feat/beta-readiness`, draft **#22**, based on #21. Checkpoint subject
 `Validate concurrent beta fleets and document reversible offline cutover`:
 **210 local tests passed, zero skips, 92% coverage**; Ruff/format including scripts
 passed. Official local hassfest passed (1 integration, 0 invalid). Code checkpoint
@@ -89,32 +89,47 @@ and ordinary HACS candidate distribution needs separate owner-approved ref/relea
 Durable command recovery is now mock-tested in #23. Physical-session authority,
 installed-version/hardware acceptance and live wiring remain unapproved. All drafts remain open.
 
-## Current continuation: provider compatibility
+## Current target: proposed v0.1.0-beta.1
 
 Durable journal draft **#23**, branch `feat/durable-command-journal`, code
 `3527c97`, is based on #22. **216 tests passed, zero skips, 92% coverage**,
 Ruff/format and official local hassfest passed. All six exact-head remote push/PR
-tests, hassfest and HACS checks passed. Reservations are verified on disk before
-mock dispatch; corrupt/failed journals inhibit control, and restart never replays.
-Recovery needs explicit physical-session continuity plus fresh post-load observation.
-Native startup loads journal diagnostics with transport disabled.
+tests, hassfest and HACS checks passed. Disk-verified write-ahead reservations,
+persistent ownership/idempotency/estimates and explicit read-only recovery replace
+memory-only uncertainty. Corrupt/failed storage inhibits execution and is preserved.
+Startup loads diagnostics with transport disabled; restart never replays.
 
-Active branch `feat/provider-adapter-profiles`, based on #23. Checkpoint subject
-`Resolve verified Tesla and Easee registry semantics through provider profiles`.
-Profiles use actual HA Fleet 2026.10.2 and pinned public Custom/Easee source
-metadata; see docs/provider-adapters.md for exact evidence and boundaries.
-Regression tests failed before the fix. Correct current-location selection excludes
-destination/route trackers; Fleet charge_state_* and Easee easee_status/is_enabled
-keys resolve correctly; Custom without translation keys uses its full verified
-VIN+type registry unique-ID contract. Ambiguity and name-only matches are rejected.
-Manual reviewed overrides, provider precedence and all safety gates remain intact.
-**220 tests passed, zero skips, 92% coverage**; Ruff/format and official local
-hassfest passed (1 integration, 0 invalid). Remote checks pending publication.
-No hardware acceptance claimed.
+Provider profiles draft **#24**, branch `feat/provider-adapter-profiles`, code
+`58e0d3c`: **220 tests passed, zero skips, 92% coverage**, Ruff/format/local
+hassfest and all six exact-head remote checks passed. Profiles use HA Fleet
+2026.10.2 and pinned public Custom/Easee sources; docs/provider-adapters.md records
+evidence. Location excludes destination/route; absent translation keys are handled
+only through verified whole vendor unique-ID contracts. Manual overrides remain.
 
-Next: improve native per-charger/current-power/journal status entities, prepare the
-proposed beta artifact without publishing, and broaden executable old Brain traces.
-Do not recreate the completed journal or earlier config/provider/history work.
+Active branch `feat/beta-candidate-package`, based on #24. Checkpoint subject:
+`Package proposed read-only beta and validate native status and legacy parity`.
+**227 tests passed, zero skips, 93% coverage**; Ruff/format including scripts passed.
+Official local hassfest passed (1 integration, 0 invalid); remote checks pending
+publication. Local archive SHA-256:
+`0e614e3f64347cadcc6d0a21e5eb950e6c021879298f64a0812b361408f05dc5`. Manifest is now proposed 0.1.0-beta.1; no tag or release is created.
+A deterministic allowlisted installable ZIP is built by
+`python scripts/build_beta_candidate.py` into ignored dist/; CI retains a review
+artifact for 14 days. Tests verify ZIP integrity/reproducibility, complete runtime,
+packaged Python compilation, metadata and no cache/storage inclusion.
+
+Native dedicated charger status/association, reported charging power and command
+disabled/recovery/blocked entities supplement existing planned/history entities.
+Native site save verifies PE entry ownership before accepting a mapping. A provider
+with no read fields can be reviewed as WRITE-only without granting control.
+These regressions failed first, then passed. Eight real JavaScript oracle cases
+now run: five optimizer + three Brain. Brain fixture documents the Issue #3-approved
+difference from the legacy defaultCar guess; no ambiguous native mapping is invented.
+Node-RED files remain byte-identical. Full old broker/raw invoices remain absent.
+
+Readiness is **packaged native read-only beta candidate**, with mock-tested journal-
+backed dispatch/recovery, not approved live control or a published prerelease.
+Normal HACS version distribution still needs a separately owner-approved ref/release;
+the source ZIP and CI artifact allow review/test installation without merging main.
 
 ## Completed (do not repeat)
 
@@ -171,26 +186,28 @@ producer contract. Hardware/provider-brand acceptance remains unrun.
 
 ## Recommended next step
 
-The beta-readiness code is published and CI green. Check this handoff commit
-head/CI first, then continue in this order without redoing completed work:
+Check the candidate branch head, artifact and exact-head CI first. Do not redo the
+completed journal, provider profiles, native UI, multi-site/history or packaging.
 
-1. Add durable dormant-executor request/uncertainty audit storage and recovery tests,
-   preserving no default transport/public enablement; define explicit physical-session
-   reconciliation using verified installed-provider capabilities before any live wiring.
-2. Broaden recorded Node-RED Brain/Optimizer action traces and actual brand/version
-   capability fixtures. Full Energy Price Broker parity is blocked by its absent
-   export/recorded outputs; use offline fixtures, never simultaneous live brokers.
-3. Validate target HA OS/provider telemetry freshness, acknowledgments, per-device
-   ownership and prolonged guest/unplug/offline behavior only in separately owner-
-   authorized device trials. No unattended commands, production changes or prerelease.
-4. Consider settled historical cost backfill only with explicit producer settlement
-   semantics and immutable audit; never rewrite known measured costs silently.
+Remaining real-device acceptance gates (not performed or authorized):
+- Verify target HA OS and exact installed Custom/Fleet/Easee versions, permissions,
+  source cadence/upstream timestamps, actual entity/service semantics and units.
+- Verify physical charger session continuity across outages/unplug/replug before
+  binding any real commissioning authority or clearing uncertainty. Internal test
+  flags and optimistic HA switch reports cannot prove physical acknowledgment.
+- Owner-supervised per-vehicle AND per-charger commissioning, single-controller
+  handover, actual energy/current/SoC acknowledgment, timeout/guest/budget behavior,
+  and rollback rehearsal; no unattended commands or production modifications.
+- Obtain full legacy Energy Price Broker v2.2 export (epb_mqtt_tab_v22 / epb22_build)
+  and recorded household fixtures for offline parity. Do not run both Nord Pool
+  brokers together or infer current tariffs from historical EWII invoices.
+- Ordinary HACS release/version publication and actual atomic cutover require
+  separate owner approval. Do not create tags/releases or merge to bypass this.
 
-Original Brain/Optimizer exports are available and unchanged. The complete original
-Energy Price Broker v2.2 export/recorded outputs are **not present** in this workspace
-or earlier repository source trees. Issue descriptions are not an executable oracle.
-Document that offline parity gap; do not claim raw-invoice or full broker parity.
-Continue independent work without reconstructing or modifying the live broker.
+Independent follow-up: settled historical cost backfill only with explicit producer
+settlement/audit semantics; never silently rewrite measured costs or old dates.
+Installation and joint atomic cutover/rollback gates: docs/beta-installation.md,
+docs/beta-cutover.md, docs/command-executor.md and docs/provider-adapters.md.
 
 ## Exact validation commands
 
@@ -204,13 +221,13 @@ PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/
 /workspace/ev-manager-venv/bin/ruff check custom_components tests scripts
 /workspace/ev-manager-venv/bin/ruff format --check custom_components tests scripts
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
-gh pr checks 21 --repo NicolaiTandrup/HA-EV-Charge-Manager
-gh pr checks 22 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 24 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 25 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 
-Node.js 24 is required for five real original Node-RED JavaScript parity cases;
-zero skips in the last full run. Do not reinstall working dependencies. Local full
+Node.js 24 is required for original Node-RED JavaScript parity cases;
+eight oracle cases and zero skips in the last full run. Do not reinstall working dependencies. Local full
 HACS container DNS is unavailable; actual remote HACS checks are the evidence.
 CI checks out pinned producer source to ignored `price-engine-reference/`. Local
 PRICE_ENGINE_SOURCE must point at an isolated export of the pinned producer commit.

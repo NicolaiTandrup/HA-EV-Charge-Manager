@@ -61,3 +61,31 @@ forecast allocations/next start/finish/07:00 SoC, producer readiness, supported 
 capabilities, and lifetime/day/week/month/year measured energy, known cost, unpriced
 energy and distance. Forecasts are conditional simulations; unsupported/stale inputs
 produce explicit unavailable/provisional status. Commands do not run from sensors.
+
+
+## Proposed v0.1.0-beta.1 archive (not a release)
+
+The component manifest now identifies the proposed candidate as 0.1.0-beta.1.
+Build a deterministic allowlisted ZIP with:
+
+```sh
+/workspace/ev-manager-venv/bin/python scripts/build_beta_candidate.py
+```
+
+The output is dist/ev-charge-manager-v0.1.0-beta.1.zip; CI also retains it as a
+review artifact for 14 days. It contains the complete custom_components folder,
+HACS metadata, license and installation/rollback/contract documentation. Caches,
+HA storage, unrelated source files and secrets are excluded by an explicit file
+allowlist; symlinked source files are rejected. ZIP integrity, deterministic rebuild
+and compilation of packaged Python modules are tested. No tag or release is created.
+
+For a test installation, unpack it outside HA, verify the reviewed version/hash,
+and copy its custom_components/ev_charge_manager directory into the test HA config.
+Normal HACS version distribution still requires a separately approved repository
+ref/release; creating this archive does not merge or publish anything to main.
+
+New dedicated entities expose each charger's observed status/association, vehicle
+reported charging power and journal disabled/recovery/blocked state. Source reports
+are not evidence of physical actuation. PE entry/site ownership is checked both
+when saving native configuration and on runtime reads. A WRITE-only provider may
+be added without read mappings; preferences never grant control authority.

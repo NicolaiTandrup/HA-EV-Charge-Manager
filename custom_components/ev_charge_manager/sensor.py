@@ -12,8 +12,20 @@ from .executor import capabilities
 
 async def async_setup_entry(hass, entry, async_add_entities):
     c = entry.runtime_data
-    entities = [ManagerSensor(c, "assignments"), ManagerSensor(c, "status")]
+    entities = [
+        ManagerSensor(c, "assignments"),
+        ManagerSensor(c, "status"),
+        ManagerSensor(c, "command_status"),
+    ]
+    entities.extend(
+        ChargerSensor(c, charger, kind)
+        for charger in c.config.get("chargers", [])
+        for kind in ("status", "association")
+    )
     entities.extend(ManagerSensor(c, "vehicle_state", vehicle=v["id"]) for v in c.registry.vehicles)
+    entities.extend(
+        ManagerSensor(c, "charging_power", vehicle=v["id"]) for v in c.registry.vehicles
+    )
     entities.extend(
         PriceSensor(c, site.site, kind)
         for site in c.sites.values()
@@ -73,6 +85,10 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
         if kind == "vehicle_state":
             self._attr_device_class = SensorDeviceClass.BATTERY
             self._attr_native_unit_of_measurement = "%"
+        elif kind == "charging_power":
+            self._attr_device_class = SensorDeviceClass.POWER
+            self._attr_native_unit_of_measurement = "kW"
+            self._attr_state_class = SensorStateClass.MEASUREMENT
         elif kind in {"expected_finish", "expected_next_start"}:
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
         elif kind == "expected_soc_at_0700":
@@ -89,9 +105,10 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
     def available(self):
         if not super().available:
             return False
-        if self.kind == "vehicle_state":
-            return bool(self.coordinator.data["vehicles"].get(self.vehicle, {}).get("soc"))
-        if self.kind in {"assignments", "status"}:
+        if self.kind in {"vehicle_state", "charging_power"}:
+            field = "soc" if self.kind == "vehicle_state" else "power"
+            return bool(self.coordinator.data["vehicles"].get(self.vehicle, {}).get(field))
+        if self.kind in {"assignments", "status", "command_status"}:
             return True
         return self.forecast is not None and (
             self.kind == "forecast" or getattr(self.forecast, self.kind) is not None
@@ -102,6 +119,23 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
         if self.kind == "vehicle_state":
             value = self.coordinator.data["vehicles"].get(self.vehicle, {}).get("soc")
             return float(value.value) if value else None
+        if self.kind == "charging_power":
+            value = self.coordinator.data["vehicles"].get(self.vehicle, {}).get("power")
+            return (
+                float(value.value)
+                / (1000 if value.attributes.get("unit_of_measurement") == "W" else 1)
+                if value
+                else None
+            )
+        if self.kind == "command_status":
+            state = self.coordinator.executor.diagnostics()
+            return (
+                "blocked"
+                if state["journal_error"]
+                else "recovery_required"
+                if state["recovery_required"]
+                else "disabled"
+            )
         if self.kind == "status":
             return "read_only"
         if self.kind == "assignments":
@@ -117,7 +151,7 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             "operating_mode": "read_only",
             "updated_at": data["updated_at"].isoformat(),
         }
-        if self.kind == "vehicle_state":
+        if self.kind in {"vehicle_state", "charging_power"}:
             attrs.update(
                 vehicle_id=self.vehicle,
                 provider_policy=next(
@@ -152,7 +186,7 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             )
         elif self.kind == "assignments":
             attrs.update(chargers=list(data["assignments"].values()), sessions=data["sessions"])
-        elif self.kind == "status":
+        elif self.kind in {"status", "command_status"}:
             attrs.update(
                 brain_enabled=self.coordinator.config.get("brain_enabled", True),
                 optimizer_enabled=self.coordinator.config.get("optimizer_enabled", True),
@@ -281,6 +315,57 @@ class PriceSensor(CoordinatorEntity, SensorEntity):
             "current_dso_tariff_ex_vat": current_dso,
             "next_dso_change_at": next_change.isoformat() if next_change else None,
             "day_validation": self.coordinator.price_schedule.days.get(self.site["id"], {}),
+        }
+
+
+class ChargerSensor(CoordinatorEntity, SensorEntity):
+    """One observed charger status/association per stable logical charger."""
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, coordinator, charger, kind):
+        super().__init__(coordinator)
+        self.charger, self.kind = charger, kind
+        self._attr_name = kind.capitalize()
+        self._attr_unique_id = f"{coordinator.entry.entry_id}_charger_{charger['id']}_{kind}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, f"{coordinator.entry.entry_id}_charger_{charger['id']}")},
+            "name": charger["name"],
+            "manufacturer": "EV Charge Manager",
+            "model": "Read-only beta",
+        }
+
+    @property
+    def row(self):
+        return (self.coordinator.data or {}).get("sessions", {}).get(self.charger["id"], {})
+
+    @property
+    def available(self):
+        return super().available and self.row.get("reported_status") not in {
+            None,
+            "unknown",
+            "unavailable",
+        }
+
+    @property
+    def native_value(self):
+        if self.kind == "status":
+            return self.row.get("reported_status")
+        vehicle = self.row.get("known_vehicle")
+        return next(
+            (v["name"] for v in self.coordinator.registry.vehicles if v["id"] == vehicle),
+            "Unknown vehicle",
+        )
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "schema_version": 1,
+            "operating_mode": "read_only",
+            **self.row,
+            "physical_control_enabled": False,
+            "association": self.coordinator.data.get("assignments", {}).get(self.charger["id"], {}),
         }
 
 

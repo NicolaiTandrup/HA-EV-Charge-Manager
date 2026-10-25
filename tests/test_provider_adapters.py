@@ -98,3 +98,23 @@ async def test_fleet_sensor_and_switch_share_key_but_boolean_wins(hass):
         translation_key="charge_state_charging_state",
     )
     assert discover(hass, d.id)["charging"] == switch.entity_id
+
+
+async def test_native_command_only_provider_can_be_added_without_read_fields(hass):
+    from custom_components.ev_charge_manager.config_flow import defaults
+
+    d = device(hass, "tesla_fleet")
+    config = defaults()
+    config["vehicles"] = [{"id": "car", "name": "Car", "providers": []}]
+    entry = MockConfigEntry(domain="ev_charge_manager", data=config)
+    entry.add_to_hass(hass)
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    fid = flow["flow_id"]
+    await hass.config_entries.options.async_configure(fid, {"next_step_id": "provider"})
+    await hass.config_entries.options.async_configure(
+        fid, {"vehicle": "car", "device": d.id, "id": "write_only", "primary": False}
+    )
+    flow = await hass.config_entries.options.async_configure(fid, {})
+    assert flow["type"] == "menu"
+    await hass.config_entries.options.async_configure(fid, {"next_step_id": "finish"})
+    assert entry.options["vehicles"][0]["providers"][0]["fields"] == {}
