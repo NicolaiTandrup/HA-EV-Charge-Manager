@@ -106,13 +106,18 @@ hassfest and all six exact-head remote checks passed. Profiles use HA Fleet
 evidence. Location excludes destination/route; absent translation keys are handled
 only through verified whole vendor unique-ID contracts. Manual overrides remain.
 
-Active branch `feat/beta-candidate-package`, based on #24. Checkpoint subject:
+Active branch `feat/beta-candidate-package`, draft **#25**, based on #24. Checkpoint subject:
 `Package proposed read-only beta and validate native status and legacy parity`.
 **227 tests passed, zero skips, 93% coverage**; Ruff/format including scripts passed.
-Official local hassfest passed (1 integration, 0 invalid); remote checks pending
-publication. Local archive SHA-256:
+Official local hassfest passed (1 integration, 0 invalid). Code checkpoint
+`6a337833f9124fca4e4c60eb3c693661444f1014` passed all six exact-head remote
+push/PR tests, hassfest and HACS checks. CI review artifact is confirmed by API:
+run 40177165226, artifact 12592382233, unexpired, matching code head. The artifact
+storage redirect returned HTTP 403 during optional round-trip download, so CI/local
+byte identity is not claimed; local rebuild determinism is tested. Local archive SHA-256:
 `0e614e3f64347cadcc6d0a21e5eb950e6c021879298f64a0812b361408f05dc5`. Manifest is now proposed 0.1.0-beta.1; no tag or release is created.
-A deterministic allowlisted installable ZIP is built by
+The following handoff-only commit records this validation; substantive code is
+unchanged. A deterministic allowlisted installable ZIP is built by
 `python scripts/build_beta_candidate.py` into ignored dist/; CI retains a review
 artifact for 14 days. Tests verify ZIP integrity/reproducibility, complete runtime,
 packaged Python compilation, metadata and no cache/storage inclusion.

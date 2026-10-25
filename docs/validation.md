@@ -141,3 +141,9 @@ existing 0/1/2/6 multi-device/site/restart/failure matrix.
 No installed-version physical provider/HA OS acceptance, real actuation, full raw
 broker/invoice parity, live cutover or release is claimed. Check the handoff for
 the exact final pushed head and remote validation receipt.
+
+Final beta candidate code 6a337833f9124fca4e4c60eb3c693661444f1014 passed all six
+remote push/PR tests, hassfest and HACS checks. CI artifact metadata confirms run
+40177165226 / artifact 12592382233, matching head and unexpired. Optional artifact
+round-trip download was blocked by HTTP 403 at result storage; CI/local byte
+identity is not claimed. Local archive determinism/integrity/compilation are tested.
