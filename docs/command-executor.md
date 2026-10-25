@@ -67,3 +67,14 @@ Tests use actual atomic HA file writes, crash/cancellation windows, failed prepa
 and result writes, malformed JSON, restart with disabled transport and newer-state
 reconciliation. This removes in-memory-only recovery; physical continuity evidence
 and future live commissioning wiring still require installed-device acceptance.
+
+### Optimistic reports never release durable uncertainty
+
+The native durable executor does not clear a live or recovered request merely
+because HA reports the requested switch/number state. Easee and other providers
+may echo setters optimistically. Explicit reconciliation now requires both verified
+physical-session continuity and an independent acknowledgment attestation, followed
+by the existing newer-report/registry/session/freshness checks. These internal
+test inputs are never populated automatically or exposed as UI authority. Without
+them, duplicate/new-key/provider-fallback dispatch stays blocked. The lower-level
+in-memory executor remains a mock harness; native use is journal-backed.

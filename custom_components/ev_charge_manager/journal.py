@@ -34,7 +34,7 @@ class CommandJournalStore(Store):
             or envelope["version"] != self.version
             or envelope.get("key") != self.key
             or envelope.get("minor_version", 1) != self.minor_version
-            or "data" not in envelope
+            or not isinstance(envelope.get("data"), dict)
         ):
             raise ValueError("Invalid command journal storage envelope")
         return envelope["data"]
@@ -102,7 +102,21 @@ class DurableCommandExecutor(CommandExecutor):
                     attempted = datetime.fromisoformat(row["attempted_at"])
                     value = row["value"]
                     if (
-                        not key
+                        not all(
+                            isinstance(v, str) and v
+                            for v in (
+                                target.provider,
+                                target.device,
+                                target.registry_id,
+                                target.action,
+                                target.domain,
+                                target.service,
+                                row["session_id"],
+                            )
+                        )
+                        or target.action
+                        not in {"start", "stop", "limit", "current", "enable", "disable"}
+                        or not key
                         or not isinstance(key, str)
                         or attempted.tzinfo is None
                         or not row["session_id"]
@@ -154,10 +168,17 @@ class DurableCommandExecutor(CommandExecutor):
         async with self.journal_lock:
             if not self.loaded or self.journal_error:
                 return Result("journal_error", self.journal_error or "Journal not loaded")
+            prior = self.records.get(key)
+            if prior and prior[0] != (target, context.session_id, context.owner, value):
+                return Result("idempotency_conflict")
             if key in self.recovered:
                 return Result(
                     "recovery_required", "Explicit read-only session reconciliation required"
                 )
+            if prior and self.pending.get(target.device) == key:
+                # HA setter echoes are not independent actuation acknowledgments.
+                # Only the explicit read-only reconciliation path may clear this.
+                return prior[2]
             before = self.snapshot()
             result = await super().execute(key, target, context, value)
             if self.journal_error:
@@ -169,18 +190,21 @@ class DurableCommandExecutor(CommandExecutor):
                     return Result("journal_error", self.journal_error)
             return result
 
-    async def reconcile(self, key, context, *, session_verified=False):
+    async def reconcile(self, key, context, *, session_verified=False, observation_verified=False):
         """Explicit verified continuity + post-recovery observation; never dispatch.
 
-        session_verified is an internal test/commissioning input, not a UI grant or
+        Verification flags are internal test/commissioning inputs, not UI grants or
         proof derived from HA startup. Future live wiring must verify a physical
         charger session identifier independently. No public reconciliation service.
         """
         async with self.journal_lock:
             if not self.loaded or self.journal_error:
                 return Result("journal_error", self.journal_error or "Journal not loaded")
-            if not session_verified or key not in self.records:
-                return Result("recovery_required", "Verified physical-session continuity required")
+            if not session_verified or not observation_verified or key not in self.records:
+                return Result(
+                    "recovery_required",
+                    "Verified physical-session continuity and independent acknowledgment required",
+                )
             identity, attempted, result = self.records[key]
             target, session, owner, value = identity
             if (context.session_id, context.owner) != (session, owner):

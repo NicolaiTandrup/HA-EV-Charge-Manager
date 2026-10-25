@@ -106,7 +106,7 @@ hassfest and all six exact-head remote checks passed. Profiles use HA Fleet
 evidence. Location excludes destination/route; absent translation keys are handled
 only through verified whole vendor unique-ID contracts. Manual overrides remain.
 
-Active branch `feat/beta-candidate-package`, draft **#25**, based on #24. Checkpoint subject:
+Previous packaging branch `feat/beta-candidate-package`, draft **#25**, based on #24. Checkpoint subject:
 `Package proposed read-only beta and validate native status and legacy parity`.
 **227 tests passed, zero skips, 93% coverage**; Ruff/format including scripts passed.
 Official local hassfest passed (1 integration, 0 invalid). Code checkpoint
@@ -135,6 +135,40 @@ Readiness is **packaged native read-only beta candidate**, with mock-tested jour
 backed dispatch/recovery, not approved live control or a published prerelease.
 Normal HACS version distribution still needs a separately owner-approved ref/release;
 the source ZIP and CI artifact allow review/test installation without merging main.
+
+## Active checkpoint: final proposed beta.1
+
+Packaging draft **#25**, head `1246ccf` (code `6a33783`), passed all six
+exact-head remote checks. Its package is superseded by this safety follow-up.
+
+Active branch `feat/verified-command-reconciliation`, draft **#26**, based on #25.
+Checkpoint subject `Keep durable uncertainty latched until verified acknowledgment`.
+**228 tests passed, zero skips, 93% coverage**; Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). Code `c650c6f` passed all six exact-head
+remote push/PR tests, hassfest and HACS checks. CI built the superseding review
+artifact in run 40177571289. The following handoff-only commit records this evidence;
+substantive code is unchanged.
+A failing regression demonstrated that an optimistic matching HA switch echo
+could release the live journal latch. Native durable execution now retains pending
+requests until explicit physical-session AND independent-acknowledgment attestations
+plus a post-load/attempt fresh matching report. Mere HA echoes, service success,
+duplicate keys or another provider cannot clear it. No public authority-grant or
+reconcile service/transport wiring was added. Actual attestation must be verified
+in separately authorized hardware trials; test flags are not security proof.
+
+Build the latest branch's ZIP; do not install an earlier #25 artifact as though it
+contained this hardening. The archive path stays dist/ev-charge-manager-v0.1.0-beta.1.zip
+and the current local SHA-256 is
+`ff692b6f3b15c187e09d6435479b8923234eb52e0ebad175f77af47913ba45c6`. No release/tag/main merge/live commands.
+
+Latest coherent checkpoint subject: `Reject empty journal envelopes and invalid persisted bindings`.
+The real-file failure matrix also covers valid JSON with null data and missing/
+invalid physical binding fields: existing files cannot masquerade as a fresh
+installation. **228 tests passed, zero skips, 93% coverage**, Ruff/format and
+official local hassfest passed after this hardening; the local ZIP was rebuilt.
+Earlier c650c6f and handoff 0a79de6 checks were green. Check the exact latest head's
+remote receipt on PR #26 (tests/hassfest/HACS plus uploaded candidate artifact);
+that receipt is posted after CI finishes without changing runtime code again.
 
 ## Completed (do not repeat)
 
@@ -227,7 +261,7 @@ PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/
 /workspace/ev-manager-venv/bin/ruff format --check custom_components tests scripts
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
 gh pr checks 24 --repo NicolaiTandrup/HA-EV-Charge-Manager
-gh pr checks 25 --repo NicolaiTandrup/HA-EV-Charge-Manager
+gh pr checks 26 --repo NicolaiTandrup/HA-EV-Charge-Manager
 git diff --check
 ```
 

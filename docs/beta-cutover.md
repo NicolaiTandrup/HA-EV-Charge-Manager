@@ -55,7 +55,7 @@ margins, Cheap Boost and shared-site limits using recorded vehicle inputs too.
   commands. No wakeups or duplicate ambiguous writes; verify API budget observations.
 - Durable command reservation/recovery is now mock-tested, including real HA file
   failures. Live commissioning still needs verified per-device authority, trustworthy
-  physical-session continuity and single-controller handover before transport wiring.
+  physical-session continuity, independent acknowledgment evidence and single-controller handover before transport wiring.
   Mock tests alone do not satisfy these gates. See command-executor.md.
 - Explicit physical-session continuity across outages, unplug/replug races, multi-day
   zero-power guests and manually authorized unknown cars tested. Preview restart
