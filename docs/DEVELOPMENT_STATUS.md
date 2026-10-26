@@ -15,7 +15,12 @@ Latest complete validation: **265 passed, zero skips, 93% coverage**, including
 actual coupled HA runtimes and SQLite PE source **`bb71585654b431e61aa256657ab18d8c0f571cf0`**.
 Ruff, format and official local hassfest passed (1 integration, 0 invalid).
 All six remote tests/hassfest/HACS checks were observed green for #27–#33.
-Cumulative remote status is pending at preparation; inspect exact-head checks.
+Cumulative PR **#34** code/docs **`d40d4f3434610900b2bc593bf1206135221e6076`**
+passed all six exact-head remote checks (push + PR tests/hassfest/HACS).
+CI run 40344413123 retained artifact `ev-charge-manager-v0.1.0-beta.1` (113338 bytes).
+This final handoff-only checkpoint records those actual results; inspect its own
+new head checks on a fresh session. Local fixed-time six-car replay also passed
+with six valid assignments and zero physical commands.
 HACS metadata validation is not normal repository registration/download acceptance.
 
 Included this extended run: native availability/site eligibility/charger limits;
