@@ -77,3 +77,10 @@ simulate_vehicle_association:
       required: true
       selector:
         text: {}
+
+simulate_dev_scenario:
+  fields:
+    scenario:
+      required: true
+      selector:
+        text: {}

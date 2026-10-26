@@ -15,6 +15,7 @@ from homeassistant.helpers import selector
 from .association import associate
 from .chargers import discover_status
 from .const import DOMAIN, NAME
+from .dev_simulation import publish_preview, scenarios
 from .price_components import validate_rules
 from .vehicle import FIELDS, discover, physical_keys
 
@@ -49,7 +50,7 @@ class Editor:
             menu_options=[
                 "modules",
                 "access_policy",
-                *(["manual_association"] if hasattr(self, "entry") else []),
+                *(["manual_association", "simulation_scenario"] if hasattr(self, "entry") else []),
                 "vehicle",
                 "provider",
                 "manage_provider",
@@ -141,6 +142,18 @@ class Editor:
             }[parts[0]]()
         return self.async_show_form(
             step_id="edit", data_schema=vol.Schema({vol.Required("item"): vol.In(choices)})
+        )
+
+    async def async_step_simulation_scenario(self, user_input=None):
+        coordinator = getattr(getattr(self, "entry", None), "runtime_data", None)
+        if coordinator is None:
+            return self.async_abort(reason="not_loaded")
+        if user_input is not None:
+            publish_preview(coordinator, user_input["scenario"])
+            return await self.async_step_menu()
+        return self.async_show_form(
+            step_id="simulation_scenario",
+            data_schema=vol.Schema({vol.Required("scenario"): vol.In(scenarios())}),
         )
 
     async def async_step_manual_association(self, user_input=None):

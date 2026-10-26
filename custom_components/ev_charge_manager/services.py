@@ -9,6 +9,7 @@ from .association import associate
 from .brain import CONNECTED, normalize
 from .command import Intent
 from .const import DOMAIN
+from .dev_simulation import publish_preview, scenarios
 from .policies import charger_enabled
 from .simulation import simulate_probe
 
@@ -112,6 +113,9 @@ def async_register(hass, coordinator):
         )
         return {"mode": "simulation", "result": result, "physical_commands": 0}
 
+    async def preview(call):
+        return publish_preview(coordinator, call.data["scenario"])
+
     async def association(call):
         return await associate(
             coordinator, call.data["charger"], call.data["session_id"], call.data["vehicle"]
@@ -120,6 +124,13 @@ def async_register(hass, coordinator):
     async def probe(call):
         return {"mode": "simulation", **simulate_probe(**call.data)}
 
+    hass.services.async_register(
+        DOMAIN,
+        "simulate_dev_scenario",
+        preview,
+        schema=vol.Schema({vol.Required("scenario"): vol.In(scenarios())}),
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(
         DOMAIN,
         "simulate_vehicle_association",
@@ -180,5 +191,6 @@ def async_unregister(hass):
         "simulate_probe",
         "simulate_command",
         "simulate_vehicle_association",
+        "simulate_dev_scenario",
     ):
         hass.services.async_remove(DOMAIN, name)

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "description": "Opt-in offline preview data only. Never actual devices, prices, control or configuration defaults.",
+  "scenarios": {
+    "two_tesla_two_easee": {"name": "Two demo Tesla vehicles / two Easee chargers", "vehicles": 2, "sites": 2, "grid_kw": 11, "mode": "staggered"},
+    "six_vehicle_shared_sites": {"name": "Six vehicles / six chargers / shared supplies", "vehicles": 6, "sites": 2, "grid_kw": 18, "mode": "staggered"},
+    "unknown_guest": {"name": "Unknown guest, zero power, connected for three days", "vehicles": 2, "sites": 2, "grid_kw": 11, "mode": "guest", "guest_days": 3, "guest_power_kw": 0},
+    "charger_offline": {"name": "Known session, charger becomes unavailable", "vehicles": 2, "sites": 2, "grid_kw": 11, "mode": "offline"},
+    "vehicle_changes_site": {"name": "GPS moves while physically connected elsewhere", "vehicles": 2, "sites": 2, "grid_kw": 11, "mode": "movement"},
+    "unexpected_restart": {"name": "Restart with several cars connected at one site", "vehicles": 6, "sites": 2, "grid_kw": 18, "mode": "restart"},
+    "simultaneous_ambiguity": {"name": "Simultaneous ambiguous connections, no identity guess", "vehicles": 2, "sites": 1, "grid_kw": 11, "mode": "simultaneous"}
+  },
+  "fixture_final_prices_dkk_per_kwh": [1.2, 0.4, 0.4, -0.1, 2.5, 1.2, 0.8, 1.8]
+}
