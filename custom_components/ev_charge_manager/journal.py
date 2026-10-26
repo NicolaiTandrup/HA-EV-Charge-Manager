@@ -15,6 +15,20 @@ from homeassistant.util import dt as dt_util
 from .executor import Capability, CommandExecutor, Result
 
 
+async def finish_verified_write(hass, operation):
+    """Keep serialized persistence protected until its worker completes on cancel."""
+    write = hass.async_create_task(operation, "Persist verified state")
+    cancelled = False
+    while not write.done():
+        try:
+            await shield(write)
+        except CancelledError:
+            cancelled = True
+    write.result()
+    if cancelled:
+        raise CancelledError
+
+
 class CommandJournalStore(Store):
     """HA atomic Store writes, verified against disk instead of an in-memory cache.
 
@@ -199,18 +213,7 @@ class DurableCommandExecutor(CommandExecutor):
         async with self.journal_lock:
             if self.journal_error:
                 raise HomeAssistantError(self.journal_error)
-            write = self.hass.async_create_task(self._save(), "Persist command reservation")
-            cancelled = False
-            while not write.done():
-                try:
-                    await shield(write)
-                except CancelledError:
-                    cancelled = True
-            # Store work may run in an executor thread. Finish/verify it before
-            # releasing the journal lock even when the requesting task is cancelled.
-            write.result()
-            if cancelled:
-                raise CancelledError
+            await finish_verified_write(self.hass, self._save())
 
     async def execute(self, key, target, context, value=None):
         async with self.operation_locks.setdefault(target.device, Lock()):

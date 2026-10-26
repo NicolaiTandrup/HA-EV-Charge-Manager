@@ -97,6 +97,29 @@ meter/estimate/continuity boundaries; reuse existing energy integration, never
 double-integrate or reprice settled values. Then portable PAHA02-DEV fixtures and
 current-package rebuild. HACS distribution remains a separately authorized gate.
 
+## Observed accounting checkpoint
+
+Command-concurrency draft **#30**, code `df25f84`, passed 250 local tests and
+official local checks; remote results are tracked on its exact head.
+
+Active branch `feat/observed-session-accounting`, based on #30. Subject
+`Attribute observed charging deltas to immutable session segments`.
+**256 tests passed, zero skips, 93% coverage**; Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). Remote checks pending publication.
+Session/charger ledgers attribute existing history deltas, not a second integrator.
+Segments split on replug/association/site/device/restart boundaries; closed costs
+and price evidence are not rewritten. Unknown/missing guest meters are unavailable,
+not free/zero. Native fixed per-charger active/lifetime/optional-period counters
+expose estimates/unpriced coverage; detailed period entities are disabled by default
+for new registrations to bound Recorder work. Histories and clock buckets retained.
+
+A failing cached-report regression also fixed native restart baselines: pre-start
+power timestamps cannot bridge downtime; require post-start reports. Source/gap/
+snapshot guards still apply. Accounting uses verified atomic/cancellation-safe
+writes; corrupt files preserved/unavailable. Tests use real isolated temporary HA
+config files, never production. Next: portable native PAHA02-DEV fixture preview,
+missing target/deadline/observed-enable diagnostics, final consolidated package.
+
 ## Owner architecture decision / PR stack
 
 HA-Energy-Price-Engine is the authoritative producer. EV consumes final inclusive

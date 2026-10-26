@@ -1,6 +1,8 @@
 """Unified optional dashboard contract. No UI consumer is mandatory."""
 
+from copy import deepcopy
 from dataclasses import asdict
+from datetime import datetime
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -8,6 +10,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .executor import capabilities
+from .session_accounting import KINDS
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -58,6 +61,12 @@ async def async_setup_entry(hass, entry, async_add_entities):
         for item in list(entities)
         if isinstance(item, MeasuredSensor)
         for period in ("day", "week", "month", "year")
+    )
+    entities.extend(
+        ChargerAccountingSensor(c, charger, kind, scope)
+        for charger in c.config.get("chargers", [])
+        for kind in KINDS
+        for scope in ("session", "lifetime", "day", "week", "month", "year")
     )
     async_add_entities(entities)
 
@@ -190,6 +199,7 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             attrs.update(
                 brain_enabled=self.coordinator.config.get("brain_enabled", True),
                 optimizer_enabled=self.coordinator.config.get("optimizer_enabled", True),
+                accounting=data.get("accounting", {}),
                 command_journal=self.coordinator.executor.diagnostics(),
                 simulated_requests=self.coordinator.commands.estimated_requests,
                 simulation_trace=self.coordinator.commands.trace,
@@ -365,7 +375,86 @@ class ChargerSensor(CoordinatorEntity, SensorEntity):
             "operating_mode": "read_only",
             **self.row,
             "physical_control_enabled": False,
+            "observed_accounting": deepcopy(
+                self.coordinator.accounting.active_for(self.charger["id"])
+            ),
             "association": self.coordinator.data.get("assignments", {}).get(self.charger["id"], {}),
+        }
+
+
+class ChargerAccountingSensor(ChargerSensor):
+    """Finite native entities per charger, not one entity per historic session."""
+
+    def __init__(self, coordinator, charger, kind, scope):
+        super().__init__(coordinator, charger, kind)
+        self.scope = scope
+        self._attr_unique_id += "_" + scope
+        self._attr_name = f"{scope} observed " + kind.replace("_", " ")
+        self._attr_native_unit_of_measurement = "DKK" if kind == "cost" else "kWh"
+        self._attr_device_class = (
+            SensorDeviceClass.MONETARY if kind == "cost" else SensorDeviceClass.ENERGY
+        )
+        self._attr_state_class = (
+            SensorStateClass.TOTAL if scope in {"session", "lifetime"} else None
+        )
+        self._attr_entity_registry_enabled_default = scope in {"session", "lifetime"}
+
+    @property
+    def summary(self):
+        book = self.coordinator.accounting
+        if self.scope == "session":
+            row = book.active_for(self.charger["id"])
+            return (
+                {
+                    **row["totals"],
+                    "measured_intervals": row["measured_intervals"],
+                    "unmeasured_segments": int(row["measured_intervals"] == 0),
+                }
+                if row
+                else {}
+            )
+        return book.totals_for(
+            self.charger["id"], None if self.scope == "lifetime" else self.scope, dt_util.utcnow()
+        )
+
+    @property
+    def available(self):
+        return (
+            CoordinatorEntity.available.fget(self)
+            and self.coordinator.accounting.storage_error is None
+            and bool(self.summary.get("measured_intervals"))
+        )
+
+    @property
+    def native_value(self):
+        return round(self.summary.get(self.kind, 0), 6) if self.available else None
+
+    @property
+    def last_reset(self):
+        row = self.coordinator.accounting.active_for(self.charger["id"])
+        return (
+            datetime.fromisoformat(row["observed_from"])
+            if self.scope == "session" and row
+            else None
+        )
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "schema_version": 1,
+            "basis": "attributed_vehicle_power_estimate",
+            "calendar_basis": "recorded_site_calendar",
+            "coverage": "observed_intervals_only",
+            "scope": self.scope,
+            "physical_control_enabled": False,
+            "unpriced_energy_kwh": self.summary.get("unpriced_energy_kwh"),
+            "measured_intervals": self.summary.get("measured_intervals", 0),
+            "unmeasured_segments": self.summary.get("unmeasured_segments", 0),
+            "cost_coverage": "partial_recorded_energy"
+            if self.summary.get("unpriced_energy_kwh")
+            else "recorded_intervals_only",
+            "storage_error": self.coordinator.accounting.storage_error,
+            "unknown_meter_is_zero": False,
         }
 
 
@@ -394,6 +483,7 @@ class MeasuredSensor(CoordinatorEntity, SensorEntity):
             f"{coordinator.entry.entry_id}_{vehicle}_{site or 'vehicle'}_history_{kind}"
         )
         if period:
+            self._attr_entity_registry_enabled_default = False
             self._attr_name += " " + period
             self._attr_unique_id += "_" + period
         self._attr_device_class = device_class

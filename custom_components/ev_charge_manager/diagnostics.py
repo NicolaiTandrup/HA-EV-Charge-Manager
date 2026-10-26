@@ -16,6 +16,10 @@ async def async_get_config_entry_diagnostics(hass, entry):
         "association_modes": dict(Counter(r["mode"] for r in c.data["assignments"].values())),
         "simulated_requests": c.commands.estimated_requests,
         "command_journal": c.executor.diagnostics(),
+        "observed_session_accounting": {
+            "segments": len(c.accounting.records),
+            "storage_error": c.accounting.storage_error,
+        },
         "snapshot_issues": dict(
             Counter(
                 issue for health in c.data["vehicle_health"].values() for issue in health["issues"]
