@@ -30,6 +30,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities.extend(
         ManagerSensor(c, "charging_power", vehicle=v["id"]) for v in c.registry.vehicles
     )
+    entities.extend(ManagerSensor(c, "charge_target", vehicle=v["id"]) for v in c.registry.vehicles)
     entities.extend(
         PriceSensor(c, site.site, kind)
         for site in c.sites.values()
@@ -43,6 +44,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
                 "expected_finish",
                 "expected_next_start",
                 "expected_soc_at_0700",
+                "next_deadline",
+                "next_proposed_action",
             ):
                 entities.append(ManagerSensor(c, kind, site, vehicle["id"]))
     entities.extend(
@@ -92,14 +95,14 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             "manufacturer": "EV Charge Manager",
             "model": "Read-only preview",
         }
-        if kind == "vehicle_state":
+        if kind in {"vehicle_state", "charge_target"}:
             self._attr_device_class = SensorDeviceClass.BATTERY
             self._attr_native_unit_of_measurement = "%"
         elif kind == "charging_power":
             self._attr_device_class = SensorDeviceClass.POWER
             self._attr_native_unit_of_measurement = "kW"
             self._attr_state_class = SensorStateClass.MEASUREMENT
-        elif kind in {"expected_finish", "expected_next_start"}:
+        elif kind in {"expected_finish", "expected_next_start", "next_deadline"}:
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
         elif kind == "expected_soc_at_0700":
             self._attr_device_class = SensorDeviceClass.BATTERY
@@ -115,19 +118,24 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
     def available(self):
         if not super().available:
             return False
-        if self.kind in {"vehicle_state", "charging_power"}:
-            field = "soc" if self.kind == "vehicle_state" else "power"
+        if self.kind in {"vehicle_state", "charging_power", "charge_target"}:
+            field = {"vehicle_state": "soc", "charging_power": "power", "charge_target": "target"}[
+                self.kind
+            ]
             return bool(self.coordinator.data["vehicles"].get(self.vehicle, {}).get(field))
         if self.kind in {"assignments", "status", "command_status"}:
             return True
+        if self.kind in {"next_deadline", "next_proposed_action"}:
+            return self.forecast is not None and self.native_value is not None
         return self.forecast is not None and (
             self.kind == "forecast" or getattr(self.forecast, self.kind) is not None
         )
 
     @property
     def native_value(self):
-        if self.kind == "vehicle_state":
-            value = self.coordinator.data["vehicles"].get(self.vehicle, {}).get("soc")
+        if self.kind in {"vehicle_state", "charge_target"}:
+            field = "soc" if self.kind == "vehicle_state" else "target"
+            value = self.coordinator.data["vehicles"].get(self.vehicle, {}).get(field)
             return float(value.value) if value else None
         if self.kind == "charging_power":
             value = self.coordinator.data["vehicles"].get(self.vehicle, {}).get("power")
@@ -151,6 +159,21 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
         if self.kind == "assignments":
             return sum(r["valid"] for r in self.coordinator.data["assignments"].values())
         f = self.forecast
+        if self.kind == "next_deadline":
+            now = self.coordinator.data["updated_at"]
+            deadlines = [datetime.fromisoformat(s["deadline"]) for s in f.stages] if f else []
+            return min((d for d in deadlines if d > now), default=None)
+        if self.kind == "next_proposed_action":
+            if not f:
+                return None
+            if not f.valid:
+                return "blocked"
+            now = self.coordinator.data["updated_at"]
+            if any(a.start <= now < a.end for a in f.allocations):
+                return "proposed_charge_now"
+            if any(a.start > now for a in f.allocations):
+                return "wait_for_planned_slot"
+            return "no_charge_required"
         return (f.status if self.kind == "forecast" else getattr(f, self.kind)) if f else None
 
     @property
@@ -161,7 +184,7 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
             "operating_mode": "read_only",
             "updated_at": data["updated_at"].isoformat(),
         }
-        if self.kind in {"vehicle_state", "charging_power"}:
+        if self.kind in {"vehicle_state", "charging_power", "charge_target"}:
             attrs.update(
                 vehicle_id=self.vehicle,
                 provider_policy=next(
@@ -225,6 +248,13 @@ class ManagerSensor(CoordinatorEntity, SensorEntity):
                 "unit": "DKK/kWh",
                 "basis": site.get("tariff", {}).get("mode", "all_in"),
             }
+            if site.get("price_source") == "energy_price_engine":
+                attrs["price_source"] = {
+                    "type": "energy_price_engine",
+                    "producer_entry_id": site.get("producer_entry"),
+                    "site_id": site.get("producer_site"),
+                    "contract_version": 1,
+                }
             attrs.update(
                 vehicle_id=self.vehicle,
                 provider_policy=next(

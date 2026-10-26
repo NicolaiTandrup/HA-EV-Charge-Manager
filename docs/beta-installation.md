@@ -86,8 +86,8 @@ and compilation of packaged Python modules are tested. No tag or release is crea
 
 For a test installation, unpack it outside HA, verify the reviewed version/hash,
 and copy its custom_components/ev_charge_manager directory into the test HA config.
-Normal HACS version distribution still requires a separately approved repository
-ref/release; creating this archive does not merge or publish anything to main.
+Normal HACS distribution still requires separately approved default-branch
+structure; creating this archive does not merge or publish anything to main.
 
 New dedicated entities expose each charger's observed status/association, vehicle
 reported charging power and journal disabled/recovery/blocked state. Source reports
@@ -99,3 +99,10 @@ Use Configure → Device availability and eligibility to enable/disable entries,
 set permitted sites/known vehicles, select a charger's site, cap its AC power and
 deny simulated guests. An empty restricted list denies all. Physical plug status
 remains observed while managed planning is disabled; history is retained.
+
+Additional read-only entities expose the fresh reported charge target, earliest
+future planner-rule deadline and next proposed charging action. `proposed_charge_now`
+is a schedule observation, not physical execution; invalid inputs show `blocked`
+with the existing forecast reason. A reported target of zero is retained as zero.
+Expired deadlines are not fabricated into future ones. See [portable previews and
+Pi acceptance](paha02-dev.md) for fixtures without real provider setup.
