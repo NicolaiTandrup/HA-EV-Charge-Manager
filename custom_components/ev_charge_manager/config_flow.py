@@ -7,10 +7,12 @@ from zoneinfo import ZoneInfo
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector
 
+from .association import associate
 from .chargers import discover_status
 from .const import DOMAIN, NAME
 from .price_components import validate_rules
@@ -47,6 +49,7 @@ class Editor:
             menu_options=[
                 "modules",
                 "access_policy",
+                *(["manual_association"] if hasattr(self, "entry") else []),
                 "vehicle",
                 "provider",
                 "manage_provider",
@@ -138,6 +141,43 @@ class Editor:
             }[parts[0]]()
         return self.async_show_form(
             step_id="edit", data_schema=vol.Schema({vol.Required("item"): vol.In(choices)})
+        )
+
+    async def async_step_manual_association(self, user_input=None):
+        coordinator = getattr(getattr(self, "entry", None), "runtime_data", None)
+        if coordinator is None:
+            return self.async_abort(reason="not_loaded")
+        errors = {}
+        if user_input is not None:
+            try:
+                if self.config != coordinator.config:
+                    raise ServiceValidationError(
+                        "Save configuration changes before reviewing a session"
+                    )
+                await associate(
+                    coordinator,
+                    user_input["charger"],
+                    self.reviewed_sessions.get(user_input["charger"], ""),
+                    user_input["vehicle"],
+                )
+                return await self.async_step_menu()
+            except ServiceValidationError:
+                errors["base"] = "unsafe_association"
+        else:
+            self.reviewed_sessions = {key: s.id for key, s in coordinator.sessions.items.items()}
+        chargers = {
+            c["id"]: c["name"] for c in self.config["chargers"] if c["id"] in self.reviewed_sessions
+        }
+        vehicles = {v["id"]: v["name"] for v in self.config["vehicles"]}
+        return self.async_show_form(
+            step_id="manual_association",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("charger"): vol.In(chargers),
+                    vol.Required("vehicle"): vol.In(vehicles),
+                }
+            ),
+            errors=errors,
         )
 
     async def async_step_access_policy(self, user_input=None):
@@ -813,6 +853,7 @@ class ConfigFlow(Editor, config_entries.ConfigFlow, domain=DOMAIN):
 
 class OptionsFlow(Editor, config_entries.OptionsFlow):
     def __init__(self, entry):
+        self.entry = entry
         self.config = deepcopy({**entry.data, **entry.options})
 
     async def async_step_init(self, user_input=None):

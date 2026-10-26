@@ -22,3 +22,17 @@ Guest authorization remains explicit, session-scoped and simulated only. Denied
 or disabled chargers cannot receive new simulated guest permission or command
 proposals. Policy changes reload safely, preserve accounting and do not automatically
 restore authority. These fields are not live commissioning controls.
+
+## Reviewed current-session association
+
+Configure → Review current vehicle association (simulation) shows friendly charger
+and vehicle choices; it captures the physical-session ID when opened. Save config
+edits first. Review is rejected after unplug/replug, on stale/missing cable/location,
+policy denial, guest authority or another charger's reservation. It cannot replace
+an already assigned different vehicle. The optional simulate_vehicle_association
+service provides the same guard with explicit logical/session IDs.
+
+Successful review resolves ambiguous known identity for this plug session only and
+is labeled manually_assigned. It does not authorize real actuation. Verified unplug
+clears the selection; restart does not infer uninterrupted physical continuity.
+Original automatic unique association, guest protection and uncertainty remain.

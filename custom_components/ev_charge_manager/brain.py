@@ -24,6 +24,7 @@ class Session:
     last_car: str | None = None
     disconnected_at: datetime | None = None
     manual: bool = False
+    reviewed: bool = False
     override_armed: bool = True
 
 
@@ -66,6 +67,7 @@ class Brain:
                     session.disconnected_at = now
                 session.car = None
                 session.manual = False
+                session.reviewed = False
                 # A still-on read-only helper must not reactivate on the next plug.
                 if override == "on":
                     session.override_armed = False
@@ -104,7 +106,11 @@ class Brain:
                         car=s.car,
                         car_name=vehicles[s.car]["name"],
                         valid=True,
-                        mode="manual_until_disconnect" if s.manual else "auto_assigned",
+                        mode="manual_until_disconnect"
+                        if s.manual
+                        else "manually_assigned"
+                        if s.reviewed
+                        else "auto_assigned",
                     )
                 else:
                     row.update(mode="stale", fresh=False)
@@ -132,6 +138,7 @@ class Brain:
                 car = resolved[key]
                 s = self.sessions[key]
                 s.car = s.last_car = car
+                s.reviewed = False
                 result[key].update(
                     car=car,
                     car_name=vehicles[car]["name"],

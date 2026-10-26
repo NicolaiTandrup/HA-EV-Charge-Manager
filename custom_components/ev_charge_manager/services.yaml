@@ -62,3 +62,18 @@ simulate_command:
           min: 0
           max: 100
           mode: box
+
+simulate_vehicle_association:
+  fields:
+    charger:
+      required: true
+      selector:
+        text: {}
+    session_id:
+      required: true
+      selector:
+        text: {}
+    vehicle:
+      required: true
+      selector:
+        text: {}

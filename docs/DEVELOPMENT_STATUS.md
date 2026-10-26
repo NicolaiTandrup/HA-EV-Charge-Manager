@@ -32,6 +32,25 @@ portable simulation fixtures and guide, additional concurrency/failure tests, re
 the cumulative ZIP and check exact-head CI. Do not repeat completed journal/provider
 work or claim full normal HACS beta delivery before the distribution gate is approved.
 
+## Reviewed manual association checkpoint
+
+Policy draft **#27**, `feat/native-access-policies`, code `8c91e46`:
+233 local tests, zero skips, 93% coverage, Ruff/format/local hassfest passed.
+Remote results checked at this checkpoint; see PR #27 exact-head checks.
+
+Active branch `feat/reviewed-manual-association`, based on #27. Subject
+`Review manual vehicle identity for current simulated plug sessions`.
+236 local tests passed, zero skips, 93% coverage; Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). Native Options chooses friendly labels,
+captures session identity and rejects replug, stale/missing same-site evidence,
+eligibility failure, guest takeover and another charger's reserved identity.
+The helper/service only modifies own simulated state. Reviewed labels clear on
+unplug/rapid replug and are not restored as authority across restart.
+New PE initially failed the old interop fixture because its real SQLite ledger
+shared the HA fixture directory across parametrized cases; next isolate that test
+directory and validate strict producer-entry scoping against the new public API.
+Do not expand producer logic in CM or bypass its stale-writer guard.
+
 ## Owner architecture decision / PR stack
 
 HA-Energy-Price-Engine is the authoritative producer. EV consumes final inclusive
