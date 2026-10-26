@@ -1,5 +1,9 @@
 # EV Charge Manager
 
+**HACS distribution is currently blocked:** main lacks the integration. A source
+ZIP/CI artifact is a manual test package, not a completed HACS beta. See
+[distribution gate](docs/HACS_DISTRIBUTION.md); no branch-URL workaround is supported.
+
 Proposed **v0.1.0-beta.1**: read-only candidate archive and CI artifact; no release
 or production control is enabled. Build/install steps are in
 [beta installation](docs/beta-installation.md).

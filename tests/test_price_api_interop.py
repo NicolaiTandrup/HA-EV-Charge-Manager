@@ -11,7 +11,10 @@ from custom_components.ev_charge_manager.price_consumer import PriceConsumer
 
 
 @pytest.mark.parametrize("day,count", [("2026-03-29", 92), ("2026-10-24", 96), ("2026-10-25", 100)])
-async def test_real_producer_api_contract_dst_and_site_isolation(hass, monkeypatch, day, count):
+async def test_real_producer_api_contract_dst_and_site_isolation(
+    hass, monkeypatch, tmp_path, day, count
+):
+    monkeypatch.setattr(hass.config, "config_dir", str(tmp_path))
     import os
     from pathlib import Path
 
@@ -64,6 +67,36 @@ async def test_real_producer_api_contract_dst_and_site_isolation(hass, monkeypat
     # Exercise the real producer API with an exact local-day DST range.
     result = consumer.lookup(site, start, end, now)
     assert len(result) == count and all(s.price == -0.25 for s in result)
+    from custom_components.ha_energy_price_engine.api import get_api, serialize_result
+
+    from custom_components.ev_charge_manager.price_consumer import decode
+
+    snapshot = serialize_result(
+        get_api(hass, version=1).lookup(
+            "producer_home", start, end, now=now, producer_entry_id=producer.entry_id
+        )
+    )
+    assert decode(snapshot, producer.entry_id, "producer_home", now, start, end)[0] == result
+    # Even duplicate imported site IDs cannot select another entry by iteration order.
+    other = MockConfigEntry(domain="ha_energy_price_engine", data={"id": "producer_home"})
+    other.add_to_hass(hass)
+    other.mock_state(hass, ConfigEntryState.LOADED)
+    other_engine = PriceEngine(hass, "other_producer_contract")
+    await other_engine.async_update(
+        "producer_home",
+        [ProducerSlot(s.start, s.end, 99) for s in slots],
+        {"mode": "all_in"},
+        {"provider": "other_test"},
+        now,
+    )
+    hass.data["ha_energy_price_engine"] = {
+        other.entry_id: SimpleNamespace(
+            site=coordinator.site, price_engine=other_engine, schedule=coordinator.schedule
+        ),
+        producer.entry_id: coordinator,
+    }
+    assert consumer.lookup(site, start, end, now) == result
+    other.mock_state(hass, ConfigEntryState.NOT_LOADED)
     coordinator.schedule.days["producer_home"][day]["status"] = "STALE"
     with pytest.raises(ValueError, match="STALE"):
         consumer.lookup(site, start, end, now)

@@ -29,6 +29,8 @@ def build(root, output):
             "docs/beta-installation.md",
             "docs/beta-cutover.md",
             "docs/contracts/price-consumer-v1.md",
+            "docs/contracts/price-api-v1.schema.json",
+            "docs/contracts/price-api-v1.examples.json",
             "docs/provider-adapters.md",
             "docs/command-executor.md",
             "docs/measured-history.md",

@@ -56,6 +56,7 @@ def api_result(data):
     )
     return SimpleNamespace(
         api_version=data["api_version"],
+        producer_entry_id=data["producer_entry_id"],
         site_id=data["site_id"],
         status=data["status"],
         revision=data["revision"],
@@ -145,6 +146,17 @@ async def test_native_consumer_no_embedded_producer_and_revision_event(hass, fre
         embedded.assert_not_called()
         for _ in range(3):
             await c.async_refresh()
+        assert len(calls) == 2
+        hass.bus.async_fire(
+            EVENT,
+            {
+                "api_version": 1,
+                "site_id": "producer_home",
+                "producer_entry_id": "another_entry",
+                "revision": 999,
+            },
+        )
+        await hass.async_block_till_done()
         assert len(calls) == 2
         hass.bus.async_fire(
             EVENT,
@@ -383,3 +395,24 @@ async def test_native_site_rejects_wrong_producer_site_before_saving(hass):
     data["producer_site"] = "actual_site"
     flow = await hass.config_entries.options.async_configure(fid, data)
     assert flow["type"] == "menu"
+
+
+async def test_ready_result_from_another_producer_entry_is_rejected(hass):
+    from custom_components.ev_charge_manager.price_consumer import PriceConsumer
+
+    producer = MockConfigEntry(domain=DOMAIN, data={"id": "home"}, state=ConfigEntryState.LOADED)
+    producer.add_to_hass(hass)
+    site = {
+        "id": "home",
+        "producer_entry": producer.entry_id,
+        "producer_site": "home",
+        "timezone": "UTC",
+    }
+    consumer = PriceConsumer(hass)
+    result = api_result(response(producer.entry_id, "home", NOW, NOW + timedelta(minutes=15)))
+    result.producer_entry_id = "different_entry"
+    with patch("custom_components.ev_charge_manager.price_consumer.import_module") as module:
+        module.return_value.get_api.return_value.lookup.return_value = result
+        with pytest.raises(ValueError, match="entry"):
+            consumer.lookup(site, NOW, NOW + timedelta(minutes=15), NOW)
+    producer.mock_state(hass, ConfigEntryState.NOT_LOADED)
