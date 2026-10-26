@@ -58,3 +58,40 @@ recorded date and use explicit calendar resets. They cannot reconstruct missing
 telemetry or establish billing completeness. No retention pruning or settled-cost
 rewrites are introduced; day buckets survive reload/restart. More detailed session
 exports and historical settled-price backfill remain follow-ups.
+
+## Observed session segments and charger reports
+
+Session/charger accounting attributes the exact deltas already calculated by the
+vehicle/site history path. It does not integrate power twice or consume plans as
+measurements. Each segment records logical charger/vehicle/site, physical HA-session
+token and device reference, observation/sample times, meter coverage, known cost,
+unpriced energy, daily deltas and the final price evidence actually used. Costs
+and finished segments are never repriced by later PE revisions.
+
+A replug, association/site/device boundary or restart closes an observation segment
+without asserting physical continuity. Restart closure uses the last observation,
+not invented charging during downtime; a continued HA session token is not proof
+of one uninterrupted physical plug. Cached pre-start power reports cannot become
+a baseline for post-start integration. Unknown status preserves the active physical
+reservation; recognized connection boundaries close it. Removing configuration
+retains historical segments and marks that administrative boundary explicitly.
+
+This is a **vehicle-power trapezoid estimate**, not a certified charger AC meter.
+A guest or missing meter has no measured intervals, so its energy/cost entities
+are unavailable rather than fabricated zero. Known unpriced energy remains explicit.
+Intervals outside the existing 180-second gap/source/skew guards are not invented.
+Calendar deltas follow the underlying site's pinned accounting timezone; segment
+day/week/month/year reports aggregate those recorded site-clock buckets.
+
+Each charger has fixed active-segment and lifetime counters; no HA entity is
+created per historic session. Detailed charger and vehicle/site period reports
+are optional entities disabled by default for new installs. Charger period reports
+are bucket views rather than monotonic long-term-statistics counters; lifetime
+entities remain the cumulative statistics source. Missing intervals and unmeasured
+segments mean recorded totals cannot claim full billing coverage.
+
+Storage reuses disk-verified HA atomic writes and cancellation-safe completion.
+Corrupt/unreadable accounting is preserved and reported unavailable; it is not
+silently replaced with empty history. The journal/actual-control authority remains
+separate and disabled. Native diagnostics expose sanitized accounting errors/counts;
+native charger attributes expose a copied current-segment snapshot.

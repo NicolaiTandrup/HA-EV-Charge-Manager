@@ -25,6 +25,7 @@ from .price_consumer import PriceConsumer
 from .price_engine import PriceEngine
 from .price_schedule import PriceSchedule
 from .price_update import PriceUpdater
+from .session_accounting import KINDS, SessionAccounting
 from .sessions import Sessions
 from .vehicle import VehicleRegistry
 
@@ -51,6 +52,9 @@ class SiteOptimizer(OptimizerCoordinator):
         self.price_error = None
         self.measurement_vehicles = None
         self.measurement_sources = {}
+        self.measurement_epoch = None
+        self.measurement_sessions = {}
+        self.accounting = None
 
     def _plan(self, vehicles, slots, now, **kwargs):
         # Regular 30-minute cadence, with immediate input/price/safety-boundary
@@ -78,6 +82,8 @@ class SiteOptimizer(OptimizerCoordinator):
 
     def _sample_history(self, vehicles, slots, now):
         # Actual power does not require SoC, target or a successful plan.
+        if self.measurement_epoch is None:
+            self.measurement_epoch = now
         for vehicle in self.registry.vehicles:
             key = vehicle["id"]
             fields = self.readings.get(key, {})
@@ -103,18 +109,69 @@ class SiteOptimizer(OptimizerCoordinator):
                 )
             else:
                 eligible = eligible and key in self.measurement_vehicles
+            if eligible and reading.reported_at < self.measurement_epoch:
+                eligible = False  # Cached pre-start reports cannot bridge an outage.
             history = self.history.setdefault(key, History())
             sampled_at = now
             if eligible:
                 provider = next(p for p in vehicle["providers"] if p["id"] == reading.provider)
                 source_id = reading.provider + ":" + provider["entity_refs"]["power"]
+                segment = self.measurement_sessions.get(key)
+                source_id += ":" + (segment["id"] if segment else "unattributed")
                 if self.measurement_sources.get(key) != source_id:
                     history.was_eligible = False
                 self.measurement_sources[key] = source_id
                 sampled_at = reading.reported_at
                 if history.sampled_at is not None and sampled_at <= history.sampled_at:
                     continue  # Watchdog reads are not new physical measurements.
+            previous = history.sampled_at
+            interval = bool(
+                eligible
+                and history.was_eligible
+                and previous
+                and 0 < (sampled_at - previous).total_seconds() <= 180
+            )
+            before = {kind: getattr(history, kind) for kind in KINDS}
+            days = {}
+            if interval:
+                from zoneinfo import ZoneInfo
+
+                zone = ZoneInfo(
+                    history.calendar_timezone if history.daily else self.site["timezone"]
+                )
+                days = {str(stamp.astimezone(zone).date()): {} for stamp in (previous, sampled_at)}
+                days = {day: dict(history.daily.get(day, {})) for day in days}
             history.sample_power(sampled_at, power, eligible, slots, timezone=self.site["timezone"])
+            segment = self.measurement_sessions.get(key)
+            if interval and segment and self.accounting is not None:
+                amounts = {kind: getattr(history, kind) - before[kind] for kind in KINDS}
+                daily = {
+                    day: {
+                        kind: history.daily.get(day, {}).get(kind, 0) - old.get(kind, 0)
+                        for kind in KINDS
+                    }
+                    for day, old in days.items()
+                }
+                used_prices = [
+                    slot for slot in slots if slot.start < sampled_at and slot.end > previous
+                ]
+                self.accounting.add(
+                    segment["id"],
+                    amounts,
+                    daily,
+                    sampled_at,
+                    source_id,
+                    used_prices,
+                    calendar_timezone=history.calendar_timezone,
+                    price_provenance={
+                        "producer_entry_id": self.site.get("producer_entry"),
+                        "producer_site_id": self.site.get("producer_site"),
+                        "consumer_price_key": self.price_key,
+                        "basis": "PE_final_inclusive"
+                        if self.site.get("price_source") == "energy_price_engine"
+                        else "legacy_migration_reference",
+                    },
+                )
         saved = {key: history.persistent() for key, history in self.history.items()}
         self.history_store.async_delay_save(lambda: saved, 1)
 
@@ -194,6 +251,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.sessions = Sessions()
         self.distance_store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.distance")
         self.distance_history = {}
+        self.accounting = SessionAccounting(hass, entry.entry_id)
         self.price_consumer = PriceConsumer(hass)
         self.price_engine = PriceEngine(hass, entry.entry_id)
         self.price_updater = PriceUpdater(hass, self.price_engine)
@@ -233,6 +291,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
             else {}
         )
 
+        for site in self.sites.values():
+            site.accounting = self.accounting
+
     def persist_sources(self):
         target = "options" if self.entry.options else "data"
         values = dict(getattr(self.entry, target))
@@ -242,6 +303,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
 
     async def async_load(self):
         await self.executor.async_load()
+        await self.accounting.async_load()
         self.persist_sources()
         for key, record in (await self.distance_store.async_load() or {}).items():
             try:
@@ -286,6 +348,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         await self.async_request_refresh()
 
     async def async_save(self):
+        await self.accounting.async_save()
         await self.store.async_save(self.sessions.persistent())
         await self.distance_store.async_save(
             {key: h.persistent() for key, h in self.distance_history.items()}
@@ -461,9 +524,21 @@ class ManagerCoordinator(DataUpdateCoordinator):
             for key, r in rows.items()
             if r["valid"] and not session_rows[key]["simulated_guest_authorized"]
         }
+        self.accounting.reconcile(
+            self.sessions.items, self.config.get("chargers", []), self.config.get("sites", []), now
+        )
         forecasts = {}
         for key, site in self.sites.items():
             site.prepare(snapshots)
+            site.measurement_sessions = {
+                row["car"]: self.accounting.active_for(charger["id"])
+                for charger in self.config.get("chargers", [])
+                for row in [rows.get(charger["id"], {})]
+                if row.get("valid")
+                and charger["zone_state"] == site.site["zone_state"]
+                and not session_rows[charger["id"]]["simulated_guest_authorized"]
+                and self.accounting.active_for(charger["id"]) is not None
+            }
             site.measurement_vehicles = None
             if self.config.get("brain_enabled", True):
                 site.measurement_vehicles = {
@@ -543,6 +618,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
                     key, now - timedelta(minutes=3), now + timedelta(days=3)
                 )
             forecasts[key] = await site._async_update_data()
+        await self.accounting.async_save()
         saved = self.sessions.persistent()
         self.store.async_delay_save(lambda: saved, 1)
         return {
@@ -552,5 +628,10 @@ class ManagerCoordinator(DataUpdateCoordinator):
             "assignments": rows,
             "sessions": session_rows,
             "forecasts": forecasts,
+            "accounting": {
+                "segments": len(self.accounting.records),
+                "storage_error": self.accounting.storage_error,
+                "basis": "observed_deltas_not_plans",
+            },
             "updated_at": now,
         }

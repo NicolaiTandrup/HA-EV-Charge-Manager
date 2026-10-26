@@ -1,8 +1,25 @@
 """Enable real Home Assistant custom integration loading."""
 
 import pytest
+from homeassistant.helpers.storage import Store
+
+from custom_components.ev_charge_manager.journal import CommandJournalStore
+
+_REAL_WRITE = Store._async_write_data
 
 pytest_plugins = "pytest_homeassistant_custom_component"
+
+
+@pytest.fixture
+def hass_config_dir(tmp_path):
+    return str(tmp_path)
+
+
+@pytest.fixture(autouse=True)
+def real_verified_store(monkeypatch):
+    # Ordinary Store remains mocked by the plugin; verified ledgers use actual
+    # atomic files in each HA fixture's isolated temporary config directory.
+    monkeypatch.setattr(CommandJournalStore, "_async_write_data", _REAL_WRITE)
 
 
 @pytest.fixture(autouse=True)
