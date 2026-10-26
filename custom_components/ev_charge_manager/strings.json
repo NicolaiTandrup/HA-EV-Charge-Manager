@@ -18,7 +18,8 @@
           "provider_policy": "Read/write provider policies",
           "command_mapping": "Review command capability mappings",
           "discover_charger": "Discover charger mappings",
-          "access_policy": "Device availability and eligibility"
+          "access_policy": "Device availability and eligibility",
+          "manual_association": "Review current vehicle association (simulation)"
         }
       },
       "modules": {
@@ -234,18 +235,28 @@
           "site_id": "Charging site",
           "max_kw": "Optional maximum charger power (kW)"
         }
+      },
+      "manual_association": {
+        "title": "Review current plug-session identity",
+        "description": "Select the physically connected known vehicle. Review applies only to the current plug session; it cannot replace a guest permission or another charger reservation. No hardware command or production authorization is issued. Save configuration edits before reviewing.",
+        "data": {
+          "charger": "Connected charger",
+          "vehicle": "Known vehicle"
+        }
       }
     },
     "error": {
       "invalid_mapping": "Invalid mapping, duplicate identity, timezone or price configuration.",
       "duplicate_device": "This device is already linked to a logical vehicle.",
       "duplicate_physical_vehicle": "Exact registry identity matches a provider on another logical vehicle. Add this device to that vehicle instead.",
-      "conflicting_physical_vehicle": "Registry identity conflicts with this logical vehicle. Review the physical vehicle before linking this provider."
+      "conflicting_physical_vehicle": "Registry identity conflicts with this logical vehicle. Review the physical vehicle before linking this provider.",
+      "unsafe_association": "Session changed, source is stale, eligibility failed or another session owns this vehicle. Review current states and save configuration changes first."
     },
     "abort": {
       "already_configured": "Already configured. Use Configure to change options.",
       "no_vehicles": "Add a logical vehicle first.",
-      "no_providers": "Attach a provider first."
+      "no_providers": "Attach a provider first.",
+      "not_loaded": "Load the integration before reviewing a physical session."
     }
   },
   "options": {
@@ -266,7 +277,8 @@
           "provider_policy": "Read/write provider policies",
           "command_mapping": "Review command capability mappings",
           "discover_charger": "Discover charger mappings",
-          "access_policy": "Device availability and eligibility"
+          "access_policy": "Device availability and eligibility",
+          "manual_association": "Review current vehicle association (simulation)"
         }
       },
       "modules": {
@@ -482,13 +494,25 @@
           "site_id": "Charging site",
           "max_kw": "Optional maximum charger power (kW)"
         }
+      },
+      "manual_association": {
+        "title": "Review current plug-session identity",
+        "description": "Select the physically connected known vehicle. Review applies only to the current plug session; it cannot replace a guest permission or another charger reservation. No hardware command or production authorization is issued. Save configuration edits before reviewing.",
+        "data": {
+          "charger": "Connected charger",
+          "vehicle": "Known vehicle"
+        }
       }
     },
     "error": {
       "invalid_mapping": "Invalid mapping, duplicate identity, timezone or price configuration.",
       "duplicate_device": "This device is already linked to a logical vehicle.",
       "duplicate_physical_vehicle": "Exact registry identity matches a provider on another logical vehicle. Add this device to that vehicle instead.",
-      "conflicting_physical_vehicle": "Registry identity conflicts with this logical vehicle. Review the physical vehicle before linking this provider."
+      "conflicting_physical_vehicle": "Registry identity conflicts with this logical vehicle. Review the physical vehicle before linking this provider.",
+      "unsafe_association": "Session changed, source is stale, eligibility failed or another session owns this vehicle. Review current states and save configuration changes first."
+    },
+    "abort": {
+      "not_loaded": "Load the integration before reviewing a physical session."
     }
   },
   "services": {
@@ -563,6 +587,21 @@
         "value": {
           "name": "Value",
           "description": "Simulation input: value"
+        }
+      }
+    },
+    "simulate_vehicle_association": {
+      "name": "Simulate reviewed vehicle association",
+      "description": "Review known identity for a current eligible physical plug session; no commands or production authority.",
+      "fields": {
+        "charger": {
+          "name": "Logical charger ID"
+        },
+        "session_id": {
+          "name": "Current physical session ID"
+        },
+        "vehicle": {
+          "name": "Logical vehicle ID"
         }
       }
     }

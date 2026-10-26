@@ -379,6 +379,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
                     session.last_car = session.car or session.last_car
                     session.car = None
                     session.manual = False
+                    session.reviewed = False
         self.entry.async_create_task(
             self.hass, self.async_request_refresh(), "Refresh managed snapshots"
         )

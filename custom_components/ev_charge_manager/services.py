@@ -5,6 +5,7 @@ from homeassistant.core import SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.util import dt as dt_util
 
+from .association import associate
 from .brain import CONNECTED, normalize
 from .command import Intent
 from .const import DOMAIN
@@ -110,9 +111,27 @@ def async_register(hass, coordinator):
         )
         return {"mode": "simulation", "result": result, "physical_commands": 0}
 
+    async def association(call):
+        return await associate(
+            coordinator, call.data["charger"], call.data["session_id"], call.data["vehicle"]
+        )
+
     async def probe(call):
         return {"mode": "simulation", **simulate_probe(**call.data)}
 
+    hass.services.async_register(
+        DOMAIN,
+        "simulate_vehicle_association",
+        association,
+        schema=vol.Schema(
+            {
+                vol.Required("charger"): str,
+                vol.Required("session_id"): str,
+                vol.Required("vehicle"): str,
+            }
+        ),
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(
         DOMAIN,
         "simulate_guest_authorization",
@@ -155,5 +174,10 @@ def async_register(hass, coordinator):
 
 
 def async_unregister(hass):
-    for name in ("simulate_guest_authorization", "simulate_probe", "simulate_command"):
+    for name in (
+        "simulate_guest_authorization",
+        "simulate_probe",
+        "simulate_command",
+        "simulate_vehicle_association",
+    ):
         hass.services.async_remove(DOMAIN, name)
