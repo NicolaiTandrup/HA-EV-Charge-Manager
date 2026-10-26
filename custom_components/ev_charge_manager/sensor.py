@@ -19,6 +19,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         ManagerSensor(c, "assignments"),
         ManagerSensor(c, "status"),
         ManagerSensor(c, "command_status"),
+        SimulationPreviewSensor(c),
     ]
     entities.extend(
         ChargerSensor(c, charger, kind)
@@ -325,6 +326,34 @@ class PriceSensor(CoordinatorEntity, SensorEntity):
             "current_dso_tariff_ex_vat": current_dso,
             "next_dso_change_at": next_change.isoformat() if next_change else None,
             "day_validation": self.coordinator.price_schedule.days.get(self.site["id"], {}),
+        }
+
+
+class SimulationPreviewSensor(CoordinatorEntity, SensorEntity):
+    """Own-state fixture result, never a vehicle/source entity."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Simulation preview"
+    _attr_should_poll = False
+
+    def __init__(self, coordinator):
+        super().__init__(coordinator)
+        self._attr_unique_id = coordinator.entry.entry_id + "_simulation_preview"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, coordinator.entry.entry_id + "_manager")}
+        }
+
+    @property
+    def native_value(self):
+        preview = (self.coordinator.data or {}).get("simulation_preview")
+        return preview["scenario"] if preview else "not_run"
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "simulation_only": True,
+            "physical_commands": 0,
+            "preview": deepcopy((self.coordinator.data or {}).get("simulation_preview")),
         }
 
 

@@ -251,6 +251,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.sessions = Sessions()
         self.distance_store = Store(hass, 1, f"{DOMAIN}.{entry.entry_id}.distance")
         self.distance_history = {}
+        self.simulation_preview = None
         self.accounting = SessionAccounting(hass, entry.entry_id)
         self.price_consumer = PriceConsumer(hass)
         self.price_engine = PriceEngine(hass, entry.entry_id)
@@ -622,6 +623,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
         saved = self.sessions.persistent()
         self.store.async_delay_save(lambda: saved, 1)
         return {
+            "simulation_preview": self.simulation_preview,
             "vehicles": snapshots,
             "vehicle_health": self.registry.assess(snapshots),
             "price_status": {**self.price_updater.status, **self.price_consumer.status},

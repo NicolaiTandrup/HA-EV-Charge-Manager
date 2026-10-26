@@ -19,7 +19,8 @@
           "command_mapping": "Review command capability mappings",
           "discover_charger": "Discover charger mappings",
           "access_policy": "Device availability and eligibility",
-          "manual_association": "Review current vehicle association (simulation)"
+          "manual_association": "Review current vehicle association (simulation)",
+          "simulation_scenario": "Run isolated development scenario"
         }
       },
       "modules": {
@@ -242,6 +243,13 @@
         "data": {
           "charger": "Connected charger",
           "vehicle": "Known vehicle"
+        }
+      },
+      "simulation_scenario": {
+        "title": "Isolated synthetic development preview",
+        "description": "Run a portable fixture without real vehicles, chargers or prices. Results appear on Simulation preview. Actual configuration, source registry, history and command budgets are untouched; no transport or control authority is enabled.",
+        "data": {
+          "scenario": "Synthetic scenario"
         }
       }
     },
@@ -278,7 +286,8 @@
           "command_mapping": "Review command capability mappings",
           "discover_charger": "Discover charger mappings",
           "access_policy": "Device availability and eligibility",
-          "manual_association": "Review current vehicle association (simulation)"
+          "manual_association": "Review current vehicle association (simulation)",
+          "simulation_scenario": "Run isolated development scenario"
         }
       },
       "modules": {
@@ -501,6 +510,13 @@
         "data": {
           "charger": "Connected charger",
           "vehicle": "Known vehicle"
+        }
+      },
+      "simulation_scenario": {
+        "title": "Isolated synthetic development preview",
+        "description": "Run a portable fixture without real vehicles, chargers or prices. Results appear on Simulation preview. Actual configuration, source registry, history and command budgets are untouched; no transport or control authority is enabled.",
+        "data": {
+          "scenario": "Synthetic scenario"
         }
       }
     },
@@ -602,6 +618,15 @@
         },
         "vehicle": {
           "name": "Logical vehicle ID"
+        }
+      }
+    },
+    "simulate_dev_scenario": {
+      "name": "Preview isolated development scenario",
+      "description": "Run only a named synthetic fixture; no production inputs, configuration changes or commands.",
+      "fields": {
+        "scenario": {
+          "name": "Fixture scenario"
         }
       }
     }

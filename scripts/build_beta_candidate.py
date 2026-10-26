@@ -37,6 +37,7 @@ def build(root, output):
             "docs/provider-policies.md",
             "docs/access-policies.md",
             "docs/HACS_DISTRIBUTION.md",
+            "docs/paha02-dev.md",
         )
     ]
     if any(p.is_symlink() for p in members):

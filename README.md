@@ -182,3 +182,5 @@ unpriced measured energy and one distance ledger per logical vehicle. Values com
 from new power/odometer reports, never planned allocations; see
 [measurement assumptions and coverage](docs/measured-history.md). Independent
 producer interoperability is still pending actual producer API implementation.
+
+Portable native fixture previews and isolated Pi acceptance: [PAHA02-DEV guide](docs/paha02-dev.md).

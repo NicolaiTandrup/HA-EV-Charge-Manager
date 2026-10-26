@@ -2,6 +2,26 @@
 
 Updated 2026-10-26. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
 
+## Latest validated continuation — portable simulation
+
+Active branch `feat/paha02-simulation-preview`, based on observed-accounting
+PR #31 code `54b25fc`. Subject `Preview portable multi-device scenarios without live input`.
+**264 tests passed, zero skips, 93% coverage** with latest PE `bb715856`;
+Ruff/format and official local hassfest passed (1 integration, 0 invalid).
+PRs #29 and #31 now each have all six remote checks green, as do #27/#28/#30.
+
+Native Options/service can run seven isolated deterministic fixture scenarios:
+two Tesla/two Easee examples, six cars/shared sites, three-day guest, offline
+charger, vehicle movement, restart and unresolved simultaneous ambiguity.
+Results use the real Brain/planner/session implementations but never enter actual
+registry, history, budgets or authority. Preview sensor and portable replay CLI
+are included. `docs/paha02-dev.md` documents isolated installation and acceptance.
+
+Next: finish missing read-only target/deadline/action observations, final candidate
+package/consolidation and exact-head CI. Normal HACS distribution remains BLOCKED
+by default-branch structure; manual ZIP is a separate isolated test route, not
+normal HACS success. No live control, production transition, merge or release.
+
 ## Current extended-run continuation (2026-10-26)
 
 Active branch `feat/native-access-policies`, based on validated #26 head
