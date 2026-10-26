@@ -1,7 +1,7 @@
 """Write-ahead command journal. Recovery observes; it never replays a request."""
 
 import json
-from asyncio import Lock
+from asyncio import CancelledError, Lock, shield
 from dataclasses import asdict
 from datetime import datetime
 from math import isfinite
@@ -55,6 +55,8 @@ class DurableCommandExecutor(CommandExecutor):
         self.dispatch = transport
         super().__init__(hass, transport=self._dispatch if transport else None, **kwargs)
         self.journal_lock = Lock()
+        self.operation_locks = {}
+        self.audit = {}
         self.loaded = False
         self.journal_error = None
         self.recovered = set()
@@ -64,6 +66,7 @@ class DurableCommandExecutor(CommandExecutor):
         return {
             "schema_version": 1,
             "requests": self.requests,
+            "audit": {key: [dict(event) for event in events] for key, events in self.audit.items()},
             "records": {
                 key: {
                     "target": asdict(identity[0]),
@@ -143,6 +146,21 @@ class DurableCommandExecutor(CommandExecutor):
                             raise ValueError("Multiple unresolved device commands")
                         pending[target.device] = key
                         recovered.add(key)
+            audit = data.get("audit", {}) if data is not None else {}
+            if not isinstance(audit, dict) or any(key not in records for key in audit):
+                raise ValueError("Invalid journal audit")
+            for events in audit.values():
+                if not isinstance(events, list):
+                    raise ValueError("Invalid journal audit")
+                for event in events:
+                    stamp = datetime.fromisoformat(event["at"])
+                    if (
+                        stamp.tzinfo is None
+                        or event["status"] not in {"uncertain", "awaiting_observation", "observed"}
+                        or not isinstance(event["reason"], str)
+                    ):
+                        raise ValueError("Invalid journal audit event")
+            self.audit = audit
             self.records, self.owners, self.pending = records, owners, pending
             self.requests, self.recovered = requests, recovered
             self.loaded_at = dt_util.utcnow()
@@ -152,6 +170,19 @@ class DurableCommandExecutor(CommandExecutor):
             # Do not overwrite a corrupt or unreadable journal with an empty one.
 
     async def _save(self):
+        for key, (_, _, result) in self.records.items():
+            events = self.audit.setdefault(key, [])
+            if not events or (events[-1]["status"], events[-1]["reason"]) != (
+                result.status,
+                result.reason,
+            ):
+                events.append(
+                    {
+                        "at": dt_util.utcnow().isoformat(),
+                        "status": result.status,
+                        "reason": result.reason,
+                    }
+                )
         try:
             await self.store.async_save(self.snapshot())
         except OSError, HomeAssistantError, ValueError, TypeError:
@@ -161,11 +192,28 @@ class DurableCommandExecutor(CommandExecutor):
     async def _dispatch(self, *args, **kwargs):
         # Base executor has reserved intent, ownership, budget and uncertainty.
         # That reservation must be durable before a transport can be invoked.
-        await self._save()
+        await self._persist()
         await self.dispatch(*args, **kwargs)
 
-    async def execute(self, key, target, context, value=None):
+    async def _persist(self):
         async with self.journal_lock:
+            if self.journal_error:
+                raise HomeAssistantError(self.journal_error)
+            write = self.hass.async_create_task(self._save(), "Persist command reservation")
+            cancelled = False
+            while not write.done():
+                try:
+                    await shield(write)
+                except CancelledError:
+                    cancelled = True
+            # Store work may run in an executor thread. Finish/verify it before
+            # releasing the journal lock even when the requesting task is cancelled.
+            write.result()
+            if cancelled:
+                raise CancelledError
+
+    async def execute(self, key, target, context, value=None):
+        async with self.operation_locks.setdefault(target.device, Lock()):
             if not self.loaded or self.journal_error:
                 return Result("journal_error", self.journal_error or "Journal not loaded")
             prior = self.records.get(key)
@@ -185,7 +233,7 @@ class DurableCommandExecutor(CommandExecutor):
                 return Result("journal_error", self.journal_error)
             if self.snapshot() != before:
                 try:
-                    await self._save()
+                    await self._persist()
                 except HomeAssistantError:
                     return Result("journal_error", self.journal_error)
             return result
@@ -197,7 +245,12 @@ class DurableCommandExecutor(CommandExecutor):
         proof derived from HA startup. Future live wiring must verify a physical
         charger session identifier independently. No public reconciliation service.
         """
-        async with self.journal_lock:
+        if not self.loaded or self.journal_error:
+            return Result("journal_error", self.journal_error or "Journal not loaded")
+        if key not in self.records:
+            return Result("recovery_required", "An existing reservation is required")
+        target = self.records[key][0][0]
+        async with self.operation_locks.setdefault(target.device, Lock()):
             if not self.loaded or self.journal_error:
                 return Result("journal_error", self.journal_error or "Journal not loaded")
             if not session_verified or not observation_verified or key not in self.records:
@@ -213,26 +266,29 @@ class DurableCommandExecutor(CommandExecutor):
             state = self.hass.states.get(entity.entity_id) if entity else None
             if not state or state.last_reported <= max(attempted, self.loaded_at):
                 return Result("recovery_required", "New post-recovery report required")
-            previous_transport = self.transport
-
-            async def forbidden(*args, **kwargs):
-                raise AssertionError("Reconciliation must never dispatch")
-
-            self.transport = forbidden
-            try:
-                result = await super().execute(key, target, context, value)
-            finally:
-                self.transport = previous_transport
+            result = await CommandExecutor._execute(
+                self, key, target, context, value, observation_only=True
+            )
             if result.status == "observed":
                 self.recovered.discard(key)
                 try:
-                    await self._save()
+                    await self._persist()
                 except HomeAssistantError:
                     return Result("journal_error", self.journal_error)
             return result
 
     def diagnostics(self):
+        failures = [
+            event
+            for events in self.audit.values()
+            for event in events
+            if event["status"] == "uncertain" and event["reason"] != "Dispatch not yet observed"
+        ]
         return {
+            "audit_events": sum(len(events) for events in self.audit.values()),
+            "last_command_error": max(failures, key=lambda event: event["at"])["reason"]
+            if failures
+            else None,
             "transport_enabled": self.dispatch is not None,
             "journal_loaded": self.loaded,
             "journal_error": self.journal_error,

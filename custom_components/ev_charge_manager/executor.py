@@ -135,8 +135,8 @@ class CommandExecutor:
             ]
             return result
 
-    async def _execute(self, key, target, context, value):
-        if self.transport is None:
+    async def _execute(self, key, target, context, value, *, observation_only=False):
+        if self.transport is None and not observation_only:
             return Result("disabled", "No command transport configured")
         if (
             not context.session_id
@@ -214,6 +214,8 @@ class CommandExecutor:
             current = state.state
         identity = (target, context.session_id, context.owner, value)
         prior = self.records.get(key)
+        if observation_only and prior is None:
+            return Result("recovery_required", "An existing reservation is required")
         if prior and prior[0] != identity:
             return Result("idempotency_conflict")
         resource = (target.device, context.session_id)

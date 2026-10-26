@@ -76,6 +76,27 @@ with explicit observation boundaries, portable PAHA02-DEV fixture scenarios and
 current-package rebuild. Normal HACS distribution remains blocked, not resolved
 by these software tests. No repository-wide distribution action is authorized.
 
+## Command concurrency/fault checkpoint
+
+Active branch `feat/concurrent-command-journal`, based on paired-PE #29 code
+`e19c944`. Subject `Persist concurrent device commands without cancellation races`.
+**250 tests passed, zero skips, 93% coverage**; Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). New remote checks pending publication.
+Failing concurrency regression showed unrelated devices blocked behind one network
+wait; fixed with per-device operation locks and serialized write-only persistence.
+A second failing regression exposed cancellation releasing the persistence lock
+before a worker write finished; shielded completion now retains ordering and never
+dispatches the cancelled request. Observation-only reconciliation never swaps a
+shared transport. Durable per-intent audit and sanitized last-error diagnostics
+persist; duplicate calls add no duplicate history. Imported invalid charger caps
+NaN/infinite/nonpositive/non-numeric fail closed instead of falling back to vehicle
+power; malformed guest policy does not grant simulated permission.
+
+Next independent task: observed session/charger accounting with explicit missing
+meter/estimate/continuity boundaries; reuse existing energy integration, never
+double-integrate or reprice settled values. Then portable PAHA02-DEV fixtures and
+current-package rebuild. HACS distribution remains a separately authorized gate.
+
 ## Owner architecture decision / PR stack
 
 HA-Energy-Price-Engine is the authoritative producer. EV consumes final inclusive
