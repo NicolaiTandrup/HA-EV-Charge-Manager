@@ -2,6 +2,7 @@
 
 from copy import deepcopy
 
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from .test_manager import model
@@ -100,4 +101,16 @@ async def test_guest_deny_is_enforced_without_discarding_physical_connection(has
         )
     assert c.sessions.items["charger"].id == sid
     assert not c.sessions.items["charger"].authorized
+    assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), 0, "not_a_number"])
+async def test_invalid_imported_charger_limit_fails_closed(hass, invalid):
+    config = model(hass)
+    config["chargers"][0]["max_kw"] = invalid
+    entry = MockConfigEntry(domain="ev_charge_manager", data=config)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    assert not entry.runtime_data.data["assignments"]["charger"]["valid"]
+    assert not entry.runtime_data.data["forecasts"]["home"]
     assert await hass.config_entries.async_unload(entry.entry_id)

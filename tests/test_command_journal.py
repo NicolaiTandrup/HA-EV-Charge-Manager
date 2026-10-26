@@ -196,3 +196,116 @@ async def test_optimistic_ha_echo_cannot_release_durable_uncertainty(hass):
     ).status == "recovery_required"
     assert (await executor.execute("two", target, context())).status == "resource_uncertain"
     assert transport.await_count == 1
+
+
+async def test_independent_chargers_dispatch_concurrently_with_durable_reservations(hass):
+    import asyncio
+
+    from homeassistant.helpers import entity_registry as er
+
+    from .test_manager import register_provider
+
+    first = capabilities(hass, setup_target(hass))["start"]
+    provider = register_provider(hass, {"charging": "switch.second_charge"}, "second")
+    er.async_get(hass).async_update_entity("switch.second_charge", translation_key="charging")
+    hass.states.async_set("switch.second_charge", "off")
+    second = capabilities(hass, provider)["start"]
+    started_first, started_second, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    store = CommandJournalStore(hass, 1, "test.concurrent")
+    calls = []
+
+    async def dispatch(domain, service, data, **kwargs):
+        saved = await store.async_load()
+        key = "one" if data["entity_id"] == "switch.charge" else "two"
+        assert saved["records"][key]["result"]["status"] == "uncertain"
+        calls.append(key)
+        if key == "one":
+            started_first.set()
+            await release.wait()
+        else:
+            started_second.set()
+
+    executor = DurableCommandExecutor(hass, store=store, transport=dispatch)
+    await executor.async_load()
+    one = asyncio.create_task(executor.execute("one", first, context()))
+    await started_first.wait()
+    two = asyncio.create_task(executor.execute("two", second, context()))
+    try:
+        await asyncio.wait_for(started_second.wait(), 1)
+    finally:
+        release.set()
+        results = await asyncio.gather(one, two)
+    assert all(r.status == "awaiting_observation" for r in results)
+    assert calls == ["one", "two"] and executor.requests == 2
+    recovered = DurableCommandExecutor(hass, store=store, transport=AsyncMock())
+    await recovered.async_load()
+    assert recovered.recovered == {"one", "two"}
+    recovered.dispatch.assert_not_called()
+
+
+async def test_cancelled_prepare_keeps_persistence_lock_until_write_finishes(hass):
+    import asyncio
+
+    from homeassistant.helpers import entity_registry as er
+
+    from .test_manager import register_provider
+
+    first = capabilities(hass, setup_target(hass))["start"]
+    provider = register_provider(hass, {"charging": "switch.cancel_second"}, "second")
+    er.async_get(hass).async_update_entity("switch.cancel_second", translation_key="charging")
+    hass.states.async_set("switch.cancel_second", "off")
+    second = capabilities(hass, provider)["start"]
+    entered, release = asyncio.Event(), asyncio.Event()
+    store = AsyncMock()
+    store.async_load.return_value = None
+    saves = []
+
+    async def save(data):
+        saves.append(data)
+        if len(saves) == 1:
+            entered.set()
+            await release.wait()
+
+    store.async_save.side_effect = save
+    transport = AsyncMock()
+    executor = DurableCommandExecutor(hass, store=store, transport=transport)
+    await executor.async_load()
+    one = asyncio.create_task(executor.execute("one", first, context()))
+    await entered.wait()
+    one.cancel()
+    await asyncio.sleep(0)
+    try:
+        assert executor.journal_lock.locked()
+        two = asyncio.create_task(executor.execute("two", second, context()))
+        await asyncio.sleep(0)
+        assert len(saves) == 1
+    finally:
+        release.set()
+        if "two" not in locals():
+            two = asyncio.create_task(executor.execute("two", second, context()))
+        results = await asyncio.gather(one, two, return_exceptions=True)
+    assert isinstance(results[0], asyncio.CancelledError)
+    assert results[1].status == "awaiting_observation"
+    assert transport.await_count == 1
+    assert transport.call_args.args[2]["entity_id"] == "switch.cancel_second"
+
+
+async def test_reserved_intent_audit_persists_without_duplicate_events(hass):
+    target = capabilities(hass, setup_target(hass))["start"]
+    store = CommandJournalStore(hass, 1, "test.audit")
+    executor = DurableCommandExecutor(
+        hass, store=store, transport=AsyncMock(side_effect=TimeoutError())
+    )
+    await executor.async_load()
+    await executor.execute("one", target, context())
+    before = await store.async_load()
+    assert [e["status"] for e in before["audit"]["one"]] == ["uncertain", "uncertain"]
+    assert before["audit"]["one"][-1]["reason"] == "TimeoutError"
+    for _ in range(3):
+        await executor.execute("one", target, context())
+    assert (await store.async_load())["audit"] == before["audit"]
+    recovered = DurableCommandExecutor(hass, store=store)
+    await recovered.async_load()
+    assert recovered.diagnostics()["last_command_error"] == "TimeoutError"
+    assert recovered.diagnostics()["audit_events"] == 2
+    assert recovered.transport is None

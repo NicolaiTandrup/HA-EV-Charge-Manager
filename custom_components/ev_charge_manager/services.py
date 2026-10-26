@@ -27,7 +27,7 @@ def async_register(hass, coordinator):
         if (
             not charger
             or not charger_enabled(coordinator.config, charger)
-            or charger.get("guest_policy", "manual") == "deny"
+            or charger.get("guest_policy", "manual") != "manual"
             or not state
             or not 0 <= (now - state.last_reported).total_seconds() <= coordinator.registry.ttl
             or normalize(state.state) not in CONNECTED
@@ -58,7 +58,8 @@ def async_register(hass, coordinator):
             and mapping
             and charger_enabled(coordinator.config, mapping)
             and (
-                bool(session and session.vehicle) or mapping.get("guest_policy", "manual") != "deny"
+                bool(session and session.vehicle)
+                or mapping.get("guest_policy", "manual") == "manual"
             )
             and normalize(state.state) in CONNECTED
             and 0 <= (now - state.last_reported).total_seconds() <= coordinator.registry.ttl

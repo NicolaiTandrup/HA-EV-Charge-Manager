@@ -1,5 +1,7 @@
 """Shared observation/planning eligibility. None of these policies grants control."""
 
+from math import isfinite
+
 
 def site_for(config, charger):
     selected = charger.get("site_id")
@@ -19,8 +21,16 @@ def site_for(config, charger):
 
 def charger_enabled(config, charger):
     site = site_for(config, charger)
+    power = charger.get("max_kw")
+    valid_power = power is None or (
+        not isinstance(power, bool)
+        and isinstance(power, (int, float))
+        and isfinite(power)
+        and power > 0
+    )
     return (
-        charger.get("enabled", True)
+        valid_power
+        and charger.get("enabled", True)
         and (not charger.get("site_id") or site is not None)
         and (site is None or site.get("enabled", True))
     )

@@ -78,3 +78,26 @@ by the existing newer-report/registry/session/freshness checks. These internal
 test inputs are never populated automatically or exposed as UI authority. Without
 them, duplicate/new-key/provider-fallback dispatch stays blocked. The lower-level
 in-memory executor remains a mock harness; native use is journal-backed.
+
+## Independent devices and cancellation-safe persistence
+
+Native execution serializes each physical device, not all network waits globally.
+Different devices may have independent outstanding mock transports, but each
+reservation is atomically saved/verified before its own dispatch. Journal writes
+remain serialized. A cancellation while a Store executor-thread write is running
+waits for that write to finish/verify before releasing the persistence lock, so
+an older write cannot race past a newer reservation. Cancelled preparation never
+dispatches, and its conservative reserved state is not blindly retried.
+
+Read-only reconciliation now uses an observation-only executor path without
+temporarily changing a shared transport; it cannot enable or disrupt another
+device's dispatch. A journal failure blocks subsequent dispatch checks even if
+another task was waiting. Per-device pending/owner/budget and independent
+acknowledgment requirements remain unchanged.
+
+Per-reserved-intent audit captures uncertain preparation, returned/failed dispatch
+and verified observation states with journal-capture timestamps. Duplicate calls
+do not manufacture repeated events. Older v1 journals without this additive audit
+remain readable; original snapshot/attempt timestamps are retained rather than
+inventing missing transition times. Sanitized last command error and event counts
+are exposed in diagnostics; these reports are not evidence of physical actuation.
