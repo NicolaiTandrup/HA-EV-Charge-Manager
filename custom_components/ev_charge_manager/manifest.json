@@ -1,0 +1,17 @@
+{
+  "domain": "ev_charge_manager",
+  "name": "EV Charge Manager",
+  "after_dependencies": [
+    "nordpool"
+  ],
+  "codeowners": [
+    "@NicolaiTandrup"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/NicolaiTandrup/HA-EV-Charge-Manager",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/issues",
+  "requirements": [],
+  "version": "0.1.0-beta.1"
+}

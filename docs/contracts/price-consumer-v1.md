@@ -1,0 +1,93 @@
+# Producer-owned read-only price API v1
+
+Authoritative implementation and contract:
+[Price Engine draft #7](https://github.com/NicolaiTandrup/HA-Energy-Price-Engine/pull/7),
+`docs/API.md` and `custom_components/ha_energy_price_engine/api.py`.
+EV reconciliation reuses the adapter/test approach in
+[companion draft #15](https://github.com/NicolaiTandrup/HA-EV-Charge-Manager/pull/15).
+The prior `get_prices` service proposal in EV #13 / producer #6 is superseded;
+no such service is required or called.
+
+Discover lazily with `get_api(hass, version=1)` from the public module. `sites()`
+returns immutable site descriptors. `lookup(site_id, start, end, now=now)` reads
+precomputed persisted prices without source fetching, arithmetic or writes.
+Ranges are aware UTC, quarter-aligned, half-open `[start,end)`; local DST days can
+contain 92, 96 or 100 quarters. Missing discovery/site is not free electricity.
+
+Frozen `PriceResult` carries api_version, site_id, status, records, expected_slots,
+valid_slots, last_success, reason and current revision. Each frozen record includes
+site_id, start/end, final_price_incl_vat, currency DKK, unit DKK/kWh, source/component
+JSON, calculated_at and its own revision. Older settled rows may have older revisions.
+Negative and explicit zero prices pass through unchanged. No VAT is added by EV.
+
+EV accepts each local-date subrange only when READY with exact contiguous coverage.
+INCOMPLETE, STALE, ERROR and NOT_LOADED ranges contribute no prices; no legacy
+fallback occurs. A missing tomorrow range does not discard a verified today range.
+Aggregate status remains INCOMPLETE with explicit verified_ranges and reasons;
+this never promotes an incomplete producer result to READY. The existing planner
+may produce a conditional or complete plan using only those verified intervals.
+Producer controls operational readiness, including current/future date verification.
+EV additionally checks configured maximum verification age, nonfinite values,
+units, identity and monotonic site revisions. The selected loaded config entry's
+public durable `id` must match the selected global producer site ID; EV does not
+inspect private runtime coordinator objects. No automatic entry conversion occurs.
+
+The synthetic `example-response-v1.json` is retained only as an **internal normalized
+validator fixture**, not a serialized producer API/service response. API tests also
+exercise actual producer objects. Historical accounting backfill needs a separate
+consumer path that respects the producer's settled historical readiness semantics.
+
+Subscribe to `ha_energy_price_engine_price_revision_v1`: api_version, site_id,
+revision, start/end and affected_slots. Events follow durable future-price changes;
+metadata-only checks do not emit. Filter version/site, coalesce duplicate revisions,
+and re-read; event data alone is never usable price data. Periodic read retries are
+bounded to once/minute and loaded-entry checks apply on every use.
+
+Charging priorities, 30-minute regular replanning, 0.005 DKK/kWh earliest-slot tie
+policy, guest exclusion, safe simulations and shared-site limits remain unchanged.
+No commands, live HA access, production cutover, release or merge are authorized.
+
+## Reproducible cross-repository validation
+
+CI checks out producer `bb71585654b431e61aa256657ab18d8c0f571cf0` into
+`price-engine-reference`. Locally, set `PRICE_ENGINE_SOURCE` to an isolated export
+of that commit, then run:
+
+```sh
+PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-latest /workspace/ev-manager-venv/bin/python -m pytest tests/test_price_api_interop.py tests/test_price_consumer.py
+```
+
+These are real producer API/ledger calls using synthetic inputs and temporary HA
+storage, not live hardware/source acceptance. Do not claim invoice verification.
+
+Offline fixture-only development when the producer checkout is unavailable:
+
+```sh
+/workspace/ev-manager-venv/bin/python -m pytest --ignore=tests/test_price_api_interop.py --ignore=tests/test_shared_pe_fixtures.py --ignore=tests/test_two_runtime.py
+```
+
+That command intentionally does not run actual producer interop tests. Do not
+report them as passed. Synthetic response/malformed-contract fixtures remain local;
+actual cross-repository conformance requires the CI-pinned producer export.
+
+
+## Latest paired beta snapshot (2026-10-26)
+
+CI now pins producer bb71585654b431e61aa256657ab18d8c0f571cf0.
+CM requires the producer's entry-scoped v1 lookup capability: producer_entry_id is
+passed explicitly and returned READY results must match. Revision events must
+also match both selected entry and site, preventing same-site imported duplicates
+from poisoning revision coalescing. Older unsupported producer snapshots fail
+closed rather than silently dropping entry scoping.
+
+The producer-owned price-api-v1.schema.json and price-api-v1.examples.json are
+copied byte-identically from that commit. Exact serialized snapshots are exercised
+through the actual producer API/SQLite ledger and current consumer with calculation,
+database reads and writes forbidden on the read path. Local normalized legacy
+example-response-v1 remains only a validator fixture, not a new wire transport.
+
+The coupled lifecycle harness reuses PE's tools/test_two_runtime.py at the same
+pin: producer-first and consumer-first startup, late producer readiness, durable
+future revisions, duplicate-event coalescing and unload run with both real HA
+coordinators and all HA service calls forbidden. Tests use isolated temp config
+directories for PE's actual SQLite ledger. No production HA or upstream calls.

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/NicolaiTandrup/HA-Energy-Price-Engine/price-api-v1.schema.json",
+  "title": "Energy Price Engine Python API v1 serialized snapshot",
+  "type": "object",
+  "required": ["api_version", "producer_entry_id", "site_id", "currency", "unit", "vat_included", "revision", "status", "verified_at", "expected_slots", "valid_slots", "slots"],
+  "properties": {
+    "api_version": {"type": "integer", "const": 1},
+    "producer_entry_id": {"type": ["string", "null"]},
+    "site_id": {"type": "string", "minLength": 1},
+    "currency": {"const": "DKK"},
+    "unit": {"const": "DKK/kWh"},
+    "vat_included": {"const": true},
+    "revision": {"type": "integer", "minimum": 0},
+    "status": {"enum": ["READY", "INCOMPLETE", "STALE", "ERROR", "NOT_LOADED"]},
+    "verified_at": {"type": ["string", "null"], "format": "date-time"},
+    "expected_slots": {"type": "integer", "minimum": 1},
+    "valid_slots": {"type": "integer", "minimum": 0},
+    "reason": {"type": ["string", "null"]},
+    "slots": {"type": "array", "items": {
+      "type": "object", "required": ["start", "end", "final_price_incl_vat", "revision", "verified_at"],
+      "properties": {
+        "start": {"type": "string", "format": "date-time"},
+        "end": {"type": "string", "format": "date-time"},
+        "final_price_incl_vat": {"type": "number"},
+        "revision": {"type": "integer", "minimum": 1},
+        "verified_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    }}
+  },
+  "allOf": [{"if": {"properties": {"status": {"const": "READY"}}}, "then": {
+    "properties": {"producer_entry_id": {"type": "string", "minLength": 1}, "verified_at": {"type": "string", "format": "date-time"}, "slots": {"minItems": 1}}
+  }}]
+}
