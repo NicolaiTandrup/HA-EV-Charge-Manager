@@ -184,3 +184,7 @@ from new power/odometer reports, never planned allocations; see
 producer interoperability is still pending actual producer API implementation.
 
 Portable native fixture previews and isolated Pi acceptance: [PAHA02-DEV guide](docs/paha02-dev.md).
+
+The cumulative review branch is `beta/read-only-candidate`; it preserves all stacked
+feature commits. It is not the default branch, a HACS branch-selection workaround,
+or an authorization to merge or release. See [distribution gates](docs/HACS_DISTRIBUTION.md).

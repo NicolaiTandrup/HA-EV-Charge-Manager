@@ -2,6 +2,76 @@
 
 Updated 2026-10-26. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
 
+## Authoritative checkpoint — cumulative candidate review
+
+Active branch **`beta/read-only-candidate`**, non-destructively based on native
+observation PR #33 code **`599924d`**. This cumulative draft targets `main` for
+review only; no merge is authorized. Previous feature PRs/branches remain intact.
+All heads #5/#6/#11–#14/#16–#33 are ancestors. #15 is the documented parallel
+consumer reference, not an omitted dependency. Historical checkpoint sections below
+retain their then-active branches; this section is the current continuation point.
+
+Latest complete validation: **265 passed, zero skips, 93% coverage**, including
+actual coupled HA runtimes and SQLite PE source **`bb71585654b431e61aa256657ab18d8c0f571cf0`**.
+Ruff, format and official local hassfest passed (1 integration, 0 invalid).
+All six remote tests/hassfest/HACS checks were observed green for #27–#33.
+Cumulative remote status is pending at preparation; inspect exact-head checks.
+HACS metadata validation is not normal repository registration/download acceptance.
+
+Included this extended run: native availability/site eligibility/charger limits;
+reviewed same-session manual association; latest entry-scoped PE v1 and exact
+producer-owned fixtures; concurrent cancellation-safe durable command journal and
+audit; immutable observed session/charger accounting; seven portable isolated native
+simulation scenarios; fresh target/future-rule-deadline/proposed-action entities.
+Existing provider policies/adapters, staged priorities, 30-minute replan, earliest
+price ties and Node-RED oracle regressions remain tested. New period entities are
+opt-in to limit dashboard clutter. No runtime live transport is constructed.
+
+Local deterministic manual test package:
+`dist/ev-charge-manager-v0.1.0-beta.1.zip`, SHA256
+`77b6daec7aa65c0314a0e2409b7eaf505d7716838d6ee5333394aa0819c855e2`.
+The builder excludes secrets/config/storage/cache and tests packaged Python/ZIP
+integrity; CI uploads a 14-day review artifact. No release/tag/publication.
+Production Node-RED hashes remain unchanged (Brain `529bb37f…`, Optimizer `9d5bd427…`).
+
+### Readiness and next steps, in priority order
+
+1. **Normal HACS distribution BLOCKED:** both default branches still lack the
+   components. Owner must select/authorize a real distribution route in
+   docs/HACS_DISTRIBUTION.md. A branch URL suffix cannot bypass HACS behavior.
+   The cumulative PR is concrete review material, not approval to merge/change
+   defaults/create repos. Manual isolated ZIP acceptance is a separate route.
+2. Run the owner-supervised PAHA02-DEV installation/add/configure/options/restart
+   checklist in docs/paha02-dev.md. Automated HA tests do not establish Pi OS/HACS
+   installability. No owner instance was accessed during this run.
+3. Review actual per-device Tesla Custom/Fleet/Easee source mappings and versions,
+   stale/sleep/disconnect behavior, meter accuracy and physical unplug/replug.
+   Mock service dispatch/recovery does not prove device response or actuation.
+   Charging-enabled capability evidence is in diagnostics; a dedicated physical
+   charger-enabled observation remains a possible follow-up, never infer it from
+   logical availability. Physical current limits need provider-specific review.
+4. Obtain owner-controlled Energy Price Broker v2.2 export/recorded historical
+   inputs/outputs and invoices to close full offline household parity. Brain and
+   Optimizer executable exports are tested; missing broker data is not guessed.
+5. Separate future control commissioning still needs physical continuity and
+   acknowledgment acceptance, single-controller handover, and explicit authority
+   for **each vehicle and charger**. Keep live transport absent; no retries of
+   uncertain writes or provider switching after a possible send.
+
+A fresh session should first inspect this branch, cumulative draft exact-head CI
+and open issues. Do not recreate these modules or repeat validated porting. If
+software fixes are needed, create a small draft based on the cumulative head;
+if distribution/hardware remains blocked, preserve the blocker rather than
+claiming a HACS-installable live beta. Atomic reversible PE+CM cutover only;
+never run the two production price brokers simultaneously.
+
+Reproduce full checks using the commands under Validation below; if the temporary
+PE export is missing, recreate an isolated `git archive` of the exact producer
+commit above. Include all three producer-dependent modules in the full run. Do
+not silently use only the offline subset to claim interoperability.
+
+## Historical checkpoint log
+
 ## Latest validated continuation — native observations
 
 Active branch `feat/native-planning-observations`, based on simulation PR #32
