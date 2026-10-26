@@ -70,6 +70,8 @@ class Brain:
                 if override == "on":
                     session.override_armed = False
                 mode = "disconnected"
+            elif not c.get("enabled", True):
+                mode = "disabled"
             elif status in CONNECTED:
                 if override == "on" and session.override_armed:
                     session.manual = True
@@ -97,7 +99,7 @@ class Brain:
             row = result[c["id"]]
             if s.car:
                 cable = source(vehicles[s.car], "cable")
-                if cable in {"on", "off"}:
+                if cable in {"on", "off"} and s.car in c.get("allowed_vehicles", vehicles):
                     row.update(
                         car=s.car,
                         car_name=vehicles[s.car]["name"],
@@ -117,6 +119,7 @@ class Brain:
                 v["id"]
                 for v in vehicles.values()
                 if v["id"] not in reserved
+                and v["id"] in c.get("allowed_vehicles", vehicles)
                 and source(v, "cable") == "on"
                 and source(v, "tracker") == c["zone_state"]
             ]

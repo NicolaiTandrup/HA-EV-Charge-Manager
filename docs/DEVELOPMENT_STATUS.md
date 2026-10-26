@@ -1,6 +1,36 @@
 # Development handoff
 
-Updated 2026-10-25. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
+Updated 2026-10-26. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
+
+## Current extended-run continuation (2026-10-26)
+
+Active branch `feat/native-access-policies`, based on validated #26 head
+`5ef7115`. Reviewed #16–#26 stack: cumulative ancestry is preserved; #15 is the
+parallel adapter reference, not a missing parent. No merges/rebases/branch deletion.
+Latest public PE #7 is `bb71585654b431e61aa256657ab18d8c0f571cf0`; exported read-only
+to /tmp/ev-price-producer-latest. Existing CI still pins the previous PE snapshot
+until real cross-repository compatibility tests pass.
+
+**Critical distribution correction:** normal owner HACS installation currently FAILS
+for both repos because main only contains LICENSE/README. Latest PE handoff includes
+actual PAHA02-DEV failure and executable HACS workflow evidence. A ZIP/manual smoke
+test or green metadata check does not close this gate. See docs/HACS_DISTRIBUTION.md.
+No main merge, default-branch change, new distribution repo, tag or release authorized.
+
+Checkpoint subject `Configure native availability eligibility and charger limits`:
+233 tests passed, zero skips, 93% coverage; Ruff/format and official local hassfest
+passed (1 integration, 0 invalid). Regressions failed first for missing native
+policy/disabled admission/charger cap. Existing defaults preserved. New native UI
+supports disable, site/vehicle allowlists (empty restricted list denies all), explicit
+charger site, manual/denied guest policy and optional maximum charger AC power.
+Physical plug observation/demand conservatism/history remain; no permission or
+command transport enabled. Remote checks pending publication.
+
+Next independent work: native reviewed manual association, then immutable observed
+session/charger accounting and latest PE API v1 entry scoping/fixtures. Add PAHA02-DEV
+portable simulation fixtures and guide, additional concurrency/failure tests, rebuild
+the cumulative ZIP and check exact-head CI. Do not repeat completed journal/provider
+work or claim full normal HACS beta delivery before the distribution gate is approved.
 
 ## Owner architecture decision / PR stack
 

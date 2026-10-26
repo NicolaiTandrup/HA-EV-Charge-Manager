@@ -201,6 +201,8 @@ class VehicleRegistry:
 
     def resolve(self, vehicle, field, now):
         """A valid fresh primary off/zero wins over fallback on/nonzero."""
+        if not vehicle.get("enabled", True):
+            return None
         for provider in provider_order(vehicle, "read", field):
             entity_id = self.source_entity(provider, field)
             state = self.hass.states.get(entity_id) if entity_id else None

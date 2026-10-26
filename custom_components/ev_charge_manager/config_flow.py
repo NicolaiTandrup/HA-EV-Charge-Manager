@@ -46,6 +46,7 @@ class Editor:
             step_id="menu",
             menu_options=[
                 "modules",
+                "access_policy",
                 "vehicle",
                 "provider",
                 "manage_provider",
@@ -138,6 +139,86 @@ class Editor:
         return self.async_show_form(
             step_id="edit", data_schema=vol.Schema({vol.Required("item"): vol.In(choices)})
         )
+
+    async def async_step_access_policy(self, user_input=None):
+        choices = {
+            f"{g}:{i['id']}": i.get("name", i["id"])
+            for g in ("vehicles", "chargers", "sites")
+            for i in self.config[g]
+        }
+        if user_input:
+            group, key = user_input["item"].split(":", 1)
+            self.policy_group = group
+            self.access_item = next(i for i in self.config[group] if i["id"] == key)
+            return await self.async_step_access_fields()
+        return self.async_show_form(
+            step_id="access_policy", data_schema=vol.Schema({vol.Required("item"): vol.In(choices)})
+        )
+
+    async def async_step_access_fields(self, user_input=None):
+        item, group = self.access_item, self.policy_group
+        if user_input is not None:
+            values = dict(user_input)
+            if group == "chargers":
+                selected = values.get("site_id")
+                if selected == "__zone__":
+                    values["site_id"] = None
+                elif selected:
+                    site = next(s for s in self.config["sites"] if s["id"] == selected)
+                    values["zone_state"] = site["zone_state"]
+            item.update(values)
+            return await self.async_step_menu()
+        schema = {vol.Required("enabled", default=item.get("enabled", True)): bool}
+
+        def multiple(choices):
+            return selector.SelectSelector(
+                selector.SelectSelectorConfig(options=choices, multiple=True, mode="dropdown")
+            )
+
+        if group == "vehicles":
+            schema.update(
+                {
+                    vol.Required("restrict_sites", default=item.get("restrict_sites", False)): bool,
+                    vol.Optional("allowed_sites", default=item.get("allowed_sites", [])): multiple(
+                        [{"value": s["id"], "label": s["name"]} for s in self.config["sites"]]
+                    ),
+                }
+            )
+        elif group == "chargers":
+            schema.update(
+                {
+                    vol.Required(
+                        "restrict_vehicles", default=item.get("restrict_vehicles", False)
+                    ): bool,
+                    vol.Optional(
+                        "eligible_vehicles", default=item.get("eligible_vehicles", [])
+                    ): multiple(
+                        [{"value": v["id"], "label": v["name"]} for v in self.config["vehicles"]]
+                    ),
+                    vol.Required(
+                        "guest_policy", default=item.get("guest_policy", "manual")
+                    ): vol.In(["manual", "deny"]),
+                    vol.Required(
+                        "site_id", default=item.get("site_id") or "__zone__"
+                    ): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                {"value": "__zone__", "label": "Use reviewed zone mapping"},
+                                *[
+                                    {"value": s["id"], "label": s["name"]}
+                                    for s in self.config["sites"]
+                                ],
+                            ],
+                            mode="dropdown",
+                        )
+                    ),
+                    vol.Optional(
+                        "max_kw",
+                        **({"default": item["max_kw"]} if item.get("max_kw") is not None else {}),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.1, max=1000)),
+                }
+            )
+        return self.async_show_form(step_id="access_fields", data_schema=vol.Schema(schema))
 
     async def async_step_modules(self, user_input=None):
         if user_input is not None:

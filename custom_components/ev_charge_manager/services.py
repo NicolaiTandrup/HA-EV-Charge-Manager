@@ -8,6 +8,7 @@ from homeassistant.util import dt as dt_util
 from .brain import CONNECTED, normalize
 from .command import Intent
 from .const import DOMAIN
+from .policies import charger_enabled
 from .simulation import simulate_probe
 
 
@@ -23,7 +24,10 @@ def async_register(hass, coordinator):
         state = hass.states.get(source) if source else None
         now = dt_util.utcnow()
         if (
-            not state
+            not charger
+            or not charger_enabled(coordinator.config, charger)
+            or charger.get("guest_policy", "manual") == "deny"
+            or not state
             or not 0 <= (now - state.last_reported).total_seconds() <= coordinator.registry.ttl
             or normalize(state.state) not in CONNECTED
         ):
@@ -50,6 +54,11 @@ def async_register(hass, coordinator):
         state = hass.states.get(source) if source else None
         source_fresh = bool(
             state
+            and mapping
+            and charger_enabled(coordinator.config, mapping)
+            and (
+                bool(session and session.vehicle) or mapping.get("guest_policy", "manual") != "deny"
+            )
             and normalize(state.state) in CONNECTED
             and 0 <= (now - state.last_reported).total_seconds() <= coordinator.registry.ttl
         )

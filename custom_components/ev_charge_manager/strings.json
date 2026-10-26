@@ -17,7 +17,8 @@
           "legacy_site": "Migration/reference site (legacy)",
           "provider_policy": "Read/write provider policies",
           "command_mapping": "Review command capability mappings",
-          "discover_charger": "Discover charger mappings"
+          "discover_charger": "Discover charger mappings",
+          "access_policy": "Device availability and eligibility"
         }
       },
       "modules": {
@@ -212,6 +213,26 @@
         "description": "Suggest a status only when registry semantics are unambiguous; review every field before saving.",
         "data": {
           "device": "Charger device"
+        }
+      },
+      "access_policy": {
+        "title": "Choose a vehicle, charger or site",
+        "data": {
+          "item": "Configured item"
+        }
+      },
+      "access_fields": {
+        "title": "Availability and eligibility (read-only)",
+        "description": "Disabling excludes managed plans, not physical plug observation or retained history. Restrictions permit only the selected sites/vehicles; an empty restricted list permits none. Guest permission remains simulated and manual. Limits never authorize hardware commands.",
+        "data": {
+          "enabled": "Enabled for managed observations/plans",
+          "restrict_sites": "Restrict charging sites",
+          "allowed_sites": "Permitted sites",
+          "restrict_vehicles": "Restrict known vehicles",
+          "eligible_vehicles": "Eligible vehicles",
+          "guest_policy": "Unknown/guest policy",
+          "site_id": "Charging site",
+          "max_kw": "Optional maximum charger power (kW)"
         }
       }
     },
@@ -244,7 +265,8 @@
           "legacy_site": "Migration/reference site (legacy)",
           "provider_policy": "Read/write provider policies",
           "command_mapping": "Review command capability mappings",
-          "discover_charger": "Discover charger mappings"
+          "discover_charger": "Discover charger mappings",
+          "access_policy": "Device availability and eligibility"
         }
       },
       "modules": {
@@ -439,6 +461,26 @@
         "description": "Suggest a status only when registry semantics are unambiguous; review every field before saving.",
         "data": {
           "device": "Charger device"
+        }
+      },
+      "access_policy": {
+        "title": "Choose a vehicle, charger or site",
+        "data": {
+          "item": "Configured item"
+        }
+      },
+      "access_fields": {
+        "title": "Availability and eligibility (read-only)",
+        "description": "Disabling excludes managed plans, not physical plug observation or retained history. Restrictions permit only the selected sites/vehicles; an empty restricted list permits none. Guest permission remains simulated and manual. Limits never authorize hardware commands.",
+        "data": {
+          "enabled": "Enabled for managed observations/plans",
+          "restrict_sites": "Restrict charging sites",
+          "allowed_sites": "Permitted sites",
+          "restrict_vehicles": "Restrict known vehicles",
+          "eligible_vehicles": "Eligible vehicles",
+          "guest_policy": "Unknown/guest policy",
+          "site_id": "Charging site",
+          "max_kw": "Optional maximum charger power (kW)"
         }
       }
     },
