@@ -1,3 +1,8 @@
+> Distribution correction (2026-10-26): normal HACS add/download currently fails
+> because main lacks the integration. The ZIP is a manual test package, not a
+> completed HACS beta. Read [the distribution gate](HACS_DISTRIBUTION.md).
+> No /tree/branch URL workaround, merge, setting change or release is authorized.
+
 # Installing and configuring the development candidate
 
 This is an installable **read-only development candidate**, not an approved live
@@ -89,3 +94,8 @@ reported charging power and journal disabled/recovery/blocked state. Source repo
 are not evidence of physical actuation. PE entry/site ownership is checked both
 when saving native configuration and on runtime reads. A WRITE-only provider may
 be added without read mappings; preferences never grant control authority.
+
+Use Configure → Device availability and eligibility to enable/disable entries,
+set permitted sites/known vehicles, select a charger's site, cap its AC power and
+deny simulated guests. An empty restricted list denies all. Physical plug status
+remains observed while managed planning is disabled; history is retained.

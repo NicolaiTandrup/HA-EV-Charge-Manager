@@ -19,6 +19,7 @@ from .const import DOMAIN
 from .history import History
 from .journal import CommandJournalStore, DurableCommandExecutor
 from .optimizer import OptimizerCoordinator
+from .policies import charger_enabled, eligible, vehicle_at_site
 from .price_consumer import EVENT as PRICE_EVENT
 from .price_consumer import PriceConsumer
 from .price_engine import PriceEngine
@@ -165,6 +166,7 @@ class SiteOptimizer(OptimizerCoordinator):
                 "location_value": self.site["zone_state"],
             }
             for v in self.registry.vehicles
+            if vehicle_at_site(v, self.site)
         ]
 
 
@@ -208,7 +210,16 @@ class ManagerCoordinator(DataUpdateCoordinator):
         self.brain = Brain(
             {
                 "vehicles": vehicles,
-                "chargers": self.config.get("chargers", []),
+                "chargers": [
+                    {
+                        **c,
+                        "enabled": charger_enabled(self.config, c),
+                        "allowed_vehicles": [
+                            v["id"] for v in self.registry.vehicles if eligible(self.config, v, c)
+                        ],
+                    }
+                    for c in self.config.get("chargers", [])
+                ],
                 "stale_seconds": self.registry.ttl,
             }
         )
@@ -216,6 +227,7 @@ class ManagerCoordinator(DataUpdateCoordinator):
             {
                 s["id"]: SiteOptimizer(hass, entry, s, self.registry)
                 for s in self.config.get("sites", [])
+                if s.get("enabled", True)
             }
             if self.config.get("optimizer_enabled", True)
             else {}
@@ -399,6 +411,9 @@ class ManagerCoordinator(DataUpdateCoordinator):
             state = self.hass.states.get(source) if source else None
             if state:
                 states[charger["status"]] = Reading(state.state, state.last_reported)
+        for brain_charger in self.brain.config["chargers"]:
+            original = next(c for c in self.config["chargers"] if c["id"] == brain_charger["id"])
+            brain_charger["status"] = original["status"]
         rows = self.brain.evaluate(states, now) if self.config.get("brain_enabled", True) else {}
         session_rows = {}
         for charger in self.config.get("chargers", []):
@@ -469,6 +484,16 @@ class ManagerCoordinator(DataUpdateCoordinator):
                         for row in [rows.get(charger["id"], {})]
                     )
                 ]
+            for mapping in site.config["vehicles"]:
+                caps = [
+                    c["max_kw"]
+                    for c in self.config.get("chargers", [])
+                    if c.get("max_kw") is not None
+                    and rows.get(c["id"], {}).get("valid")
+                    and rows[c["id"]].get("car") == mapping["key"]
+                ]
+                if caps:
+                    mapping["max_kw"] = min(mapping["max_kw"], *caps)
             site.config["grid_kw"] = site.site["grid_kw"]
             uncertain_guest = any(
                 charger["zone_state"] == site.site["zone_state"]
