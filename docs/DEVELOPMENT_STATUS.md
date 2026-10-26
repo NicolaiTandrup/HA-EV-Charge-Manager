@@ -2,6 +2,23 @@
 
 Updated 2026-10-26. Read AGENTS.md, relevant issues/open PRs and inspect Git first.
 
+## Latest validated continuation — native observations
+
+Active branch `feat/native-planning-observations`, based on simulation PR #32
+code `136d11d`. Subject `Expose reported targets and proposed charging decisions`.
+**265 tests passed, zero skips, 93% coverage** with PE `bb715856`; Ruff/format and
+official local hassfest passed (1 integration, 0 invalid). PR #32 all six remote
+checks are green. Regressions failed first for the missing target observation.
+
+Fresh reported target (including zero), earliest future rule deadline and next
+proposed action now have dedicated read-only entities. Invalid forecasts report
+blocked, not a command. No deadline is invented after its rule expires. Forecast
+attributes correctly identify PE producer entry/site instead of legacy pricing.
+
+Next: build/verify cumulative package, prepare non-destructive cumulative review
+and check exact-head CI. Normal HACS and physical Pi/provider acceptance gates
+remain unclosed; preserve all production Node-RED and keep transport absent.
+
 ## Latest validated continuation — portable simulation
 
 Active branch `feat/paha02-simulation-preview`, based on observed-accounting
