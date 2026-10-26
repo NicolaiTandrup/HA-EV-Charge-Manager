@@ -49,12 +49,12 @@ No commands, live HA access, production cutover, release or merge are authorized
 
 ## Reproducible cross-repository validation
 
-CI checks out producer `46b33bf50773082b6d942816c676dd098ee6bad1` into
+CI checks out producer `bb71585654b431e61aa256657ab18d8c0f571cf0` into
 `price-engine-reference`. Locally, set `PRICE_ENGINE_SOURCE` to an isolated export
 of that commit, then run:
 
 ```sh
-PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/bin/python -m pytest tests/test_price_api_interop.py tests/test_price_consumer.py
+PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-latest /workspace/ev-manager-venv/bin/python -m pytest tests/test_price_api_interop.py tests/test_price_consumer.py
 ```
 
 These are real producer API/ledger calls using synthetic inputs and temporary HA
@@ -63,9 +63,31 @@ storage, not live hardware/source acceptance. Do not claim invoice verification.
 Offline fixture-only development when the producer checkout is unavailable:
 
 ```sh
-/workspace/ev-manager-venv/bin/python -m pytest --ignore=tests/test_price_api_interop.py
+/workspace/ev-manager-venv/bin/python -m pytest --ignore=tests/test_price_api_interop.py --ignore=tests/test_shared_pe_fixtures.py --ignore=tests/test_two_runtime.py
 ```
 
 That command intentionally does not run actual producer interop tests. Do not
 report them as passed. Synthetic response/malformed-contract fixtures remain local;
 actual cross-repository conformance requires the CI-pinned producer export.
+
+
+## Latest paired beta snapshot (2026-10-26)
+
+CI now pins producer bb71585654b431e61aa256657ab18d8c0f571cf0.
+CM requires the producer's entry-scoped v1 lookup capability: producer_entry_id is
+passed explicitly and returned READY results must match. Revision events must
+also match both selected entry and site, preventing same-site imported duplicates
+from poisoning revision coalescing. Older unsupported producer snapshots fail
+closed rather than silently dropping entry scoping.
+
+The producer-owned price-api-v1.schema.json and price-api-v1.examples.json are
+copied byte-identically from that commit. Exact serialized snapshots are exercised
+through the actual producer API/SQLite ledger and current consumer with calculation,
+database reads and writes forbidden on the read path. Local normalized legacy
+example-response-v1 remains only a validator fixture, not a new wire transport.
+
+The coupled lifecycle harness reuses PE's tools/test_two_runtime.py at the same
+pin: producer-first and consumer-first startup, late producer readiness, durable
+future revisions, duplicate-event coalescing and unload run with both real HA
+coordinators and all HA service calls forbidden. Tests use isolated temp config
+directories for PE's actual SQLite ledger. No production HA or upstream calls.

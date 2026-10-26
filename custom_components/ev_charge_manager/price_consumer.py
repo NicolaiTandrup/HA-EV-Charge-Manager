@@ -181,11 +181,15 @@ class PriceConsumer:
         if config.get("id") != site["producer_site"]:
             raise ValueError("Producer/site ownership mismatch")
         api = import_module(f"custom_components.{DOMAIN}.api").get_api(self.hass, version=1)
-        result = api.lookup(site["producer_site"], start, end, now=now)
+        result = api.lookup(
+            site["producer_site"], start, end, now=now, producer_entry_id=entry.entry_id
+        )
         if str(result.status) != "READY":
             raise PricesUnavailable(
                 f"{result.status}: {result.reason or 'Producer prices not ready'}"
             )
+        if result.producer_entry_id != entry.entry_id:
+            raise ValueError("Producer result entry ownership mismatch")
         expected = int((end - start).total_seconds() / 900)
         if result.expected_slots != expected or result.valid_slots != expected:
             raise ValueError("Producer coverage count mismatch")

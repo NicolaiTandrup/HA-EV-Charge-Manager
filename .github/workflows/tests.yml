@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           repository: NicolaiTandrup/HA-Energy-Price-Engine
-          ref: 46b33bf50773082b6d942816c676dd098ee6bad1
+          ref: bb71585654b431e61aa256657ab18d8c0f571cf0
           path: price-engine-reference
           persist-credentials: false
       - uses: actions/setup-python@v6

@@ -327,9 +327,11 @@ class ManagerCoordinator(DataUpdateCoordinator):
         ):
             return
         for site in self.sites.values():
-            if site.site.get("price_source") == "energy_price_engine" and data.get(
-                "site_id"
-            ) == site.site.get("producer_site"):
+            if (
+                site.site.get("price_source") == "energy_price_engine"
+                and data.get("site_id") == site.site.get("producer_site")
+                and data.get("producer_entry_id") == site.site.get("producer_entry")
+            ):
                 if data["revision"] > max(
                     self.price_consumer.revisions.get(site.site["id"], -1),
                     self.price_consumer.event_revisions.get(site.site["id"], -1),

@@ -51,6 +51,31 @@ shared the HA fixture directory across parametrized cases; next isolate that tes
 directory and validate strict producer-entry scoping against the new public API.
 Do not expand producer logic in CM or bypass its stale-writer guard.
 
+## Latest paired PE checkpoint
+
+Manual-association draft **#28**, code `a9184a6`, passed 236 local tests and all
+six exact-head remote tests/hassfest/HACS checks. Policy #27 code `8c91e46` is
+also green. No source or branch history replaced.
+
+Active branch `feat/latest-pe-contract`, based on #28. Subject
+`Validate latest entry-scoped PE contract with coupled HA runtimes`.
+**243 tests passed, zero skips, 93% coverage**, Ruff/format and official local
+hassfest passed (1 integration, 0 invalid). CI pin advanced only after actual
+tests passed to PE `bb71585654b431e61aa256657ab18d8c0f571cf0`.
+CM passes producer_entry_id to v1 lookup, verifies result ownership and scopes
+revision events. Regression rejects another entry's READY result and high foreign
+revision. Actual SQLite tests use separate HA config dirs, not a shared fake store.
+Exact producer-owned schema/examples are copied byte-identically and tested with
+real serialized responses; read paths prohibit arithmetic/DB I/O/writes.
+Reused PE coupled-runtime harness verifies producer-first/consumer-first startup,
+late availability, future revisions/coalescing and unload with all HA services
+forbidden. New remote checks pending publication.
+
+Next: command multi-resource concurrency/fault audit, then session/charger accounting
+with explicit observation boundaries, portable PAHA02-DEV fixture scenarios and
+current-package rebuild. Normal HACS distribution remains blocked, not resolved
+by these software tests. No repository-wide distribution action is authorized.
+
 ## Owner architecture decision / PR stack
 
 HA-Energy-Price-Engine is the authoritative producer. EV consumes final inclusive
@@ -304,8 +329,8 @@ From `/workspace/HA-EV-Charge-Manager`, existing Python 3.14.8 / HA 2026.10.2:
 ```sh
 git status --short --branch
 git log -6 --oneline
-PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/bin/python -m pytest --cov=custom_components.ev_charge_manager --cov-report=term
-PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-reference /workspace/ev-manager-venv/bin/python -m pytest tests/test_price_api_interop.py tests/test_price_consumer.py tests/test_measured_history.py tests/test_history.py tests/test_registry.py
+PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-latest /workspace/ev-manager-venv/bin/python -m pytest --cov=custom_components.ev_charge_manager --cov-report=term
+PRICE_ENGINE_SOURCE=/tmp/ev-price-producer-latest /workspace/ev-manager-venv/bin/python -m pytest tests/test_price_api_interop.py tests/test_price_consumer.py tests/test_measured_history.py tests/test_history.py tests/test_registry.py
 /workspace/ev-manager-venv/bin/ruff check custom_components tests scripts
 /workspace/ev-manager-venv/bin/ruff format --check custom_components tests scripts
 docker run --rm -v /workspace/HA-EV-Charge-Manager:/github/workspace ghcr.io/home-assistant/hassfest
@@ -323,12 +348,12 @@ See docs/contracts/price-consumer-v1.md for provenance and commands. If the loca
 producer export is missing, recreate it without changing either checkout:
 
 ```sh
-mkdir -p /tmp/ev-price-producer-reference
-git -C /workspace/HA-Energy-Price-Engine archive 46b33bf50773082b6d942816c676dd098ee6bad1 | tar -x -C /tmp/ev-price-producer-reference
+mkdir -p /tmp/ev-price-producer-latest
+git -C /workspace/HA-Energy-Price-Engine archive bb71585654b431e61aa256657ab18d8c0f571cf0 | tar -x -C /tmp/ev-price-producer-latest
 ```
 
 If pinned source is unavailable, fixture-only development remains possible using
-`python -m pytest --ignore=tests/test_price_api_interop.py`; report actual producer
+`python -m pytest --ignore=tests/test_price_api_interop.py --ignore=tests/test_shared_pe_fixtures.py --ignore=tests/test_two_runtime.py`; report actual producer
 conformance as unrun in that mode. Do not replace the version pin with a moving head.
 
 ## Checkpoint safety
